@@ -1,0 +1,1762 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arena Prime | Crédito da loja</title>
+<meta name="description" content="Controle de crédito dos clientes da Arena Prime">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23000'/%3E%3Ctext x='50' y='72' font-size='64' text-anchor='middle' fill='%23a47bff' font-family='Arial' font-weight='700'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  MAPA DO ARQUIVO
+  CSS: tokens > base > topo > lista > ficha > lançar > extrato > produtos > painel > backup > diálogo > mobile > impressão
+  HTML: header (nav) > main (v-clientes, v-produtos, v-painel, v-backup) > #print > dialog > toast
+  JS: estado/storage > utilidades > render (lista, ficha, produtos, painel, backup) > ações > PDF > WhatsApp > backup > eventos
+  Dados ficam só no localStorage deste navegador (chave arenaprime_credito_v1).
+-->
+<style>
+:root{
+  --preto:#000;
+  --sup:#16131c;
+  --sup2:#231e2c;
+  --texto:#fff;
+  --apagado:#a9a4b5;
+  --roxo:#a47bff;
+  --roxo-btn:#7646f0;
+  --roxo-fundo:rgba(164,123,255,.14);
+  --foco:#cdb6ff;
+  --alerta:#ffb4b4;
+  --disp:"Big Shoulders Display",Impact,"Arial Narrow",sans-serif;
+  --corpo:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit;margin:0}
+details *,input,button{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--preto)}
+body{background:var(--preto);color:var(--texto);font:16px/1.5 var(--corpo);-webkit-font-smoothing:antialiased;min-height:100%}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--foco);outline-offset:3px;border-radius:8px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-variant-numeric:tabular-nums}
+
+/* assinatura no canto inferior direito */
+body{display:flex;flex-direction:column;min-height:100vh;min-height:100svh}
+main{flex:1}
+.assinatura-canto{text-align:right;padding:24px 40px calc(24px + env(safe-area-inset-bottom,0px));line-height:1.2}
+.assinatura-canto strong{display:block;font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:.04em;color:#6f6a7c}
+.assinatura-canto span{font-size:13px;color:#8a8595;letter-spacing:.02em}
+
+/* botões */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 20px;border:0;border-radius:999px;background:var(--sup2);color:var(--texto);font-weight:600;cursor:pointer;text-decoration:none;transition:background .15s}
+.btn:hover{background:#2e2839}
+.btn.prim{background:var(--roxo-btn)}
+.btn.prim:hover{background:#6536dc}
+.btn.fantasma{background:transparent;color:var(--apagado);padding-inline:12px}
+.btn.fantasma:hover{color:var(--texto);background:var(--sup)}
+.btn.perigo{background:transparent;color:var(--alerta);padding-inline:12px}
+.btn.perigo-cheio{background:#5c1f2a;color:#fff}
+.btn.perigo-cheio:hover{background:#74283a}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn-mini{min-height:44px;padding:6px 12px;border:0;background:transparent;color:var(--apagado);border-radius:8px;cursor:pointer;font-size:15px}
+.btn-mini:hover{color:var(--texto);background:var(--sup)}
+
+/* campos */
+.campo{display:flex;flex-direction:column;gap:6px}
+.campo label{font-size:15px;font-weight:600;color:var(--apagado)}
+input[type=text],input[type=tel],input[type=search],input:not([type]){min-height:48px;padding:10px 14px;border-radius:10px;border:1px solid transparent;background:var(--sup);font-size:16px;width:100%}
+input:focus{border-color:var(--roxo);outline:none}
+input::placeholder{color:#76717f}
+.erro{color:var(--alerta);font-size:15px;min-height:1.2em}
+.dica{color:var(--apagado);font-size:15px}
+
+/* topo */
+.topo{position:sticky;top:0;z-index:10;background:var(--preto);display:flex;align-items:center;gap:40px;padding:18px 40px}
+.marca{display:flex;align-items:baseline;gap:12px;white-space:nowrap}
+.marca strong{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:.03em;line-height:1}
+.marca span{color:var(--apagado);font-size:15px}
+.nav{display:flex;gap:4px}
+.nav button{position:relative;min-height:44px;padding:8px 16px;border:0;background:none;color:var(--apagado);font-weight:600;cursor:pointer;border-radius:8px}
+.nav button:hover{color:var(--texto)}
+.nav button[aria-current=page]{color:var(--texto)}
+.topo-extra{margin-left:auto;min-height:44px;padding:8px 14px;border:0;background:none;color:var(--apagado);font-size:15px;font-weight:600;cursor:pointer;border-radius:8px}
+.topo-extra:hover,.topo-extra[aria-current=page]{color:var(--texto)}
+.nav button[aria-current=page]::after{content:"";position:absolute;left:16px;right:16px;bottom:2px;height:3px;border-radius:3px;background:var(--roxo)}
+
+main{padding:8px 40px 64px}
+
+/* ===== clientes: duas colunas ===== */
+.duas{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:64px;align-items:start}
+.lista{position:sticky;top:88px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 104px);max-height:calc(100svh - 104px)}
+.btn.cadastrar{min-height:56px;font-size:18px;width:100%}
+.lista-cab .campo{flex:1}
+.filtros{display:flex;gap:6px}
+.filtros button{min-height:44px;padding:6px 14px;border-radius:999px;border:0;background:transparent;color:var(--apagado);cursor:pointer;font-weight:600;font-size:15px}
+.filtros button[aria-pressed=true]{background:var(--sup2);color:var(--texto)}
+.aviso{background:var(--roxo-fundo);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:15px}
+.aviso .btn{align-self:flex-start;min-height:44px}
+#listaClientes{list-style:none;padding:0;overflow:auto;margin:0 -8px;padding:0 8px 16px}
+.linha-cli{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;padding:10px 14px;border:0;background:transparent;border-radius:12px;text-align:left;cursor:pointer}
+.linha-cli:hover{background:var(--sup)}
+.linha-cli[aria-current=true]{background:var(--sup2)}
+.lc-nome{display:flex;flex-direction:column;min-width:0}
+.lc-nome strong{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lc-nome span{color:var(--apagado);font-size:14px}
+.lc-saldo{font-family:var(--disp);font-weight:700;font-size:23px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lc-saldo small{font-family:var(--corpo);font-size:14px;font-weight:600;margin-right:4px}
+.lc-saldo.pos{color:var(--roxo)}
+.lc-saldo.neg{color:var(--texto)}
+.lc-saldo.zero{color:#8a8595}
+.vazio-lista{color:var(--apagado);padding:14px}
+
+/* ===== ficha ===== */
+.ficha{min-width:0;padding-top:8px;max-width:1040px}
+.voltar{display:none;margin-bottom:12px}
+.ficha-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.ficha-nome{font-family:var(--disp);font-weight:800;font-size:52px;line-height:1;letter-spacing:.01em}
+.ficha-meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--apagado);margin-top:8px}
+.ficha-acoes{display:flex;gap:6px;flex-wrap:wrap}
+.saldo{margin:40px 0 56px}
+.saldo-num{font-family:var(--disp);font-weight:800;font-size:clamp(72px,9vw,136px);line-height:.88;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.saldo.pos .saldo-num{color:var(--roxo)}
+.saldo.zero .saldo-num{color:#8a8595}
+.saldo-rot{font-size:20px;margin-top:10px;color:var(--apagado)}
+.saldo.neg .saldo-rot{color:var(--texto);font-weight:600}
+.ficha-vazia{padding:72px 0;max-width:520px}
+.ficha-vazia h2{font-family:var(--disp);font-weight:800;font-size:48px;line-height:1;margin-bottom:14px}
+.ficha-vazia p{color:var(--apagado);font-size:18px}
+.acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+
+h3.secao{font-family:var(--disp);font-weight:700;font-size:30px;line-height:1.1;margin-bottom:16px}
+
+/* ações principais e telas focadas */
+.acoes-principais{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:640px;margin:-16px 0 64px}
+.btn.enorme{text-align:left;min-height:96px;border-radius:16px;flex-direction:column;align-items:flex-start;justify-content:center;padding:16px 24px;font-family:var(--disp);font-weight:800;font-size:32px;line-height:1;gap:6px}
+.btn.enorme small{font-family:var(--corpo);font-size:15px;font-weight:500;line-height:1.3;opacity:.9}
+.saldo-parcela{margin-top:14px;font-weight:600;font-size:17px}
+.saldo-parcela.atrasada{color:var(--alerta)}
+.saldo-parcela.breve{color:var(--roxo)}
+.saldo-parcela.aberta{color:var(--apagado);font-weight:500}
+.fluxo{max-width:900px;padding-bottom:40px}
+.voltar-fluxo{margin:0 0 12px -12px}
+.fluxo-quem{display:flex;gap:16px;flex-wrap:wrap;color:var(--apagado)}
+.fluxo-quem span:first-child{color:var(--texto);font-weight:600}
+.fluxo-titulo{font-family:var(--disp);font-weight:800;font-size:52px;line-height:1;margin:6px 0 28px}
+details.outro{margin:4px 0}
+details.outro summary{display:inline-flex;align-items:center;min-height:44px;cursor:pointer;color:var(--apagado);font-weight:600;border-radius:8px;padding:0 4px}
+details.outro summary:hover{color:var(--texto)}
+details.outro[open] summary{margin-bottom:12px}
+.opcoes{display:flex;flex-direction:column;gap:10px;max-width:560px;margin-bottom:12px}
+.rotulo{font-weight:600;margin:18px 0 10px}
+.cartao{margin:14px 0 4px;max-width:560px}
+.cartao .dica{margin-top:8px}
+.formas{flex-wrap:wrap;margin-bottom:8px}
+.formas button{background:var(--sup);min-height:48px;padding:8px 18px}
+.formas button[aria-pressed=true]{background:var(--texto);color:#000}
+.fluxo .fechamento{margin-top:4px;max-width:900px}
+.opcao{position:relative;display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:68px;padding:12px 20px 12px 54px;border-radius:14px;border:1px solid transparent;background:var(--sup);cursor:pointer;text-align:left}
+.opcao:hover{background:var(--sup2)}
+.opcao::before{content:"";position:absolute;left:20px;top:50%;width:20px;height:20px;margin-top:-10px;border-radius:50%;border:2px solid var(--apagado);box-sizing:border-box}
+.opcao[aria-checked=true]{border-color:var(--roxo);background:#271e3b}
+.opcao[aria-checked=true]::before{border:6px solid var(--roxo)}
+.opcao strong{display:block;font-size:17px}
+.opcao small{display:block;color:var(--apagado);font-size:15px}
+.opcao .v{font-family:var(--disp);font-weight:800;font-size:28px;white-space:nowrap}
+.menu{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px}
+.menu-item{width:100%;text-align:left;border:0;background:var(--sup2);border-radius:12px;padding:12px 16px;min-height:56px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.menu-item:hover{background:#2e2839}
+.menu-item span{color:var(--apagado);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.chip{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:8px 18px;border-radius:999px;border:1px solid transparent;background:var(--sup);cursor:pointer;font-weight:600}
+.chip:hover{background:var(--sup2)}
+.chip span{color:var(--apagado);font-weight:500}
+.chip.no-carrinho{background:var(--roxo-fundo);border-color:var(--roxo)}
+.chip b{background:var(--roxo);color:#000;border-radius:999px;min-width:24px;height:24px;display:inline-grid;place-items:center;font-size:14px;padding:0 6px}
+.avulso{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.avulso .campo:first-child{width:150px}
+.avulso .cresce{flex:1;min-width:200px}
+#v-produtos .pagina{max-width:1000px}
+.lista-prod li > span:last-child{text-align:right}
+.carrinho{list-style:none;padding:0;margin-top:28px}
+.carrinho li{display:grid;grid-template-columns:1fr auto 120px auto;align-items:center;gap:12px;padding:8px 0}
+.qtd{display:inline-flex;align-items:center;gap:2px}
+.qtd button{width:44px;height:44px;border:0;border-radius:10px;background:var(--sup);cursor:pointer;font-size:20px;line-height:1}
+.qtd output{min-width:32px;text-align:center;font-weight:600}
+.carrinho .sub{text-align:right;font-weight:600}
+.fechamento{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:20px;padding-top:24px}
+.tot{font-family:var(--disp);font-weight:800;font-size:44px;line-height:1}
+.fechamento .depois{color:var(--apagado);margin-top:6px}
+.fechamento .depois strong{color:var(--texto)}
+.btn.grande{min-height:56px;padding:12px 28px;font-size:18px}
+
+/* extrato */
+.extrato{list-style:none;padding:0;max-width:1000px}
+.ext-cab,.ext-linha{display:grid;grid-template-columns:150px 1fr 130px 130px 100px;gap:16px;align-items:center}
+.ext-cab{color:var(--apagado);font-size:14px;font-weight:600;padding-bottom:8px;max-width:1000px}
+.ext-linha{padding:14px 0}
+.ext-linha + .ext-linha{box-shadow:0 -1px 0 rgba(255,255,255,.06)}
+.ext-data{color:var(--apagado);font-size:15px}
+.ext-desc em{font-style:normal;color:var(--apagado);font-size:14px;margin-left:8px}
+.ext-linha.estornado .ext-desc span{text-decoration:line-through;color:var(--apagado)}
+.ext-valor,.ext-saldo{text-align:right;font-variant-numeric:tabular-nums}
+.ext-valor{font-weight:700}
+.ext-valor.credito{color:var(--roxo)}
+.ext-valor.venda{color:var(--apagado);font-weight:500}
+.ext-valor.beneficio{color:var(--roxo);font-weight:600}
+.fiel{margin:-24px 0 64px;max-width:640px}
+.fiel-cab{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.fiel-cab h3{margin:0}
+.fiel-cab span{color:var(--apagado)}
+.bolinhas{display:grid;grid-template-columns:repeat(10,1fr);gap:8px;max-width:520px;list-style:none;padding:0}
+.bolinhas li{aspect-ratio:1;border-radius:50%;border:2px solid #4a4455;max-width:44px}
+.bolinhas li.on{background:var(--roxo);border-color:var(--roxo)}
+.fiel.completo .fiel-aviso{margin-top:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.fiel-aviso p{font-weight:600}
+.ext-saldo{color:var(--apagado)}
+.ext-acao{text-align:right}
+.n{text-align:right}
+
+/* produtos / painel / backup */
+.pagina{max-width:900px;padding-top:24px}
+.pagina h2{font-family:var(--disp);font-weight:800;font-size:56px;line-height:1;margin-bottom:12px}
+.intro{color:var(--apagado);font-size:18px;max-width:60ch;margin-bottom:36px}
+.lista-prod{list-style:none;padding:0;margin-top:40px}
+.lista-prod li{display:grid;grid-template-columns:1fr 110px 170px 120px 170px;align-items:center;gap:16px;padding:10px 0}
+.lista-prod .cab{color:var(--apagado);font-size:14px;font-weight:600;padding-bottom:0}
+.lista-prod .valor{text-align:right;color:var(--apagado);font-variant-numeric:tabular-nums}
+.estoque{display:inline-flex;align-items:center;gap:4px}
+.estoque button{width:44px;height:44px;border:0;border-radius:10px;background:var(--sup);cursor:pointer;font-size:20px;line-height:1}
+.estoque output{min-width:56px;text-align:center;font-weight:600}
+.estoque-total{font-size:20px;margin-top:32px}
+.estoque-total strong{font-family:var(--disp);font-weight:800;font-size:40px;margin-left:8px}
+.chip .zerado{color:var(--alerta)}
+.cats{margin-bottom:16px;flex-wrap:wrap}
+.grupo{margin-top:48px}
+.grupo-cab{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.grupo-cab h3{margin:0}
+.grupo-cab span{color:var(--apagado);font-variant-numeric:tabular-nums}
+.saldo .btn{margin-top:20px}
+.aviso.exemplo{background:var(--sup2)}
+.assinatura{color:var(--apagado)}
+.liga-topo{display:flex;gap:32px;align-items:end;flex-wrap:wrap}
+.lista-cab-liga{display:flex;gap:10px;align-items:end;margin:28px 0 12px;max-width:640px}
+.lista-cab-liga .campo{flex:1}
+.jogadores{list-style:none;padding:0;max-width:900px}
+.jogadores li{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0}
+.jogadores li.dica{display:block}
+.jog{display:flex;align-items:center;gap:14px;min-height:56px;min-width:260px;padding:8px 14px;border:0;border-radius:12px;background:transparent;cursor:pointer;text-align:left}
+.jog:hover{background:var(--sup)}
+.jog small{display:block;color:var(--apagado);font-size:14px}
+.marca-jog{width:24px;height:24px;border-radius:7px;border:2px solid var(--apagado);flex:none;display:grid;place-items:center}
+.jogadores li.on .jog{background:var(--sup2)}
+.jogadores li.on .marca-jog{background:var(--roxo);border-color:var(--roxo)}
+.jogadores li.on .marca-jog::after{content:"";width:6px;height:11px;border:solid #000;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.jogadores .formas{margin:0}
+.jogadores .formas button{min-height:44px;padding:6px 14px;font-size:15px}
+.inscritos{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.inscritos button{min-height:44px;padding:8px 16px;border:0;border-radius:999px;background:var(--sup);cursor:pointer;font-weight:600}
+.inscritos button:hover{background:var(--sup2)}
+.premios{display:flex;flex-direction:column;gap:10px;max-width:640px}
+.premio-linha{display:grid;grid-template-columns:48px 1fr 170px;gap:10px;align-items:center}
+.premio-linha .pos{font-family:var(--disp);font-weight:800;font-size:28px}
+select{min-height:48px;padding:10px 12px;border-radius:10px;border:1px solid transparent;background:var(--sup);color:var(--texto);font:inherit;font-size:16px;width:100%;color-scheme:dark}
+select:focus{border-color:var(--roxo);outline:none}
+.check{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;color:var(--apagado);font-size:15px}
+.check input{width:22px;height:22px;accent-color:var(--roxo);margin:0}
+.entrou{margin:8px 0 56px}
+.entrou .total-num{color:var(--texto)}
+.formas-res{display:flex;gap:32px;flex-wrap:wrap;margin-top:14px;color:var(--apagado)}
+.formas-res strong{display:block;color:var(--texto);font-size:20px;font-variant-numeric:tabular-nums}
+.totais.menor .total-num{font-size:clamp(40px,4vw,60px)}
+.totais.menor .total-rot small{display:block;font-size:15px}
+.plano{margin:-16px 0 64px;max-width:960px}
+.parcelas{list-style:none;padding:0;margin-bottom:8px}
+.parcelas li{display:grid;grid-template-columns:110px 120px 110px 1fr auto;gap:16px;align-items:center;padding:10px 0}
+.p-v{font-weight:700;font-variant-numeric:tabular-nums}
+.p-d{font-variant-numeric:tabular-nums}
+.p-st{color:var(--apagado)}
+.p-ac{display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap}
+.parcelas .paga .p-n,.parcelas .paga .p-v,.parcelas .paga .p-d{color:var(--apagado)}
+.parcelas .atrasada .p-st{color:var(--alerta);font-weight:600}
+.parcelas .breve .p-st{color:var(--roxo);font-weight:600}
+.btn-mini.forte{color:var(--texto);background:var(--sup2)}
+.btn-mini.forte:hover{background:#2e2839}
+.lc-alerta{color:var(--alerta);font-size:14px;font-weight:600}
+.dois{display:flex;gap:10px;align-items:end}
+.dois .campo{flex:1;min-width:0}
+.pl-prev{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px}
+.pl-prev li{display:grid;grid-template-columns:44px 1fr 1.3fr;gap:8px;align-items:center}
+.pl-prev li span{color:var(--apagado);font-weight:600}
+input[type=date]{min-height:48px;padding:10px 12px;border-radius:10px;border:1px solid transparent;background:var(--sup);font-size:16px;width:100%;color-scheme:dark}
+dialog{max-height:90vh;max-height:90svh;overflow:auto}
+.cobrancas{margin-bottom:64px}
+.cobrancas li{display:grid;grid-template-columns:1fr 120px 110px 170px auto;gap:16px;align-items:center;padding:10px 0}
+.cobrancas .nome{background:none;border:0;padding:0;text-align:left;cursor:pointer;font-weight:600;min-height:44px}
+.cobrancas .nome:hover{text-decoration:underline}
+.lista-prod .preco{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+
+.totais{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin:16px 0 64px}
+.total-rot{font-size:18px;color:var(--apagado);margin-bottom:8px;max-width:30ch}
+.total-num{font-family:var(--disp);font-weight:800;font-size:clamp(56px,6vw,96px);line-height:.9;font-variant-numeric:tabular-nums}
+.total-num.roxo{color:var(--roxo)}
+.colunas{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-bottom:64px}
+.rank{list-style:none;padding:0}
+.rank button{width:100%;display:flex;justify-content:space-between;gap:12px;min-height:48px;align-items:center;padding:8px 12px;margin:0 -12px;width:calc(100% + 24px);border:0;background:transparent;border-radius:10px;cursor:pointer;text-align:left}
+.rank button:hover{background:var(--sup)}
+.rank .v{font-weight:700;font-variant-numeric:tabular-nums}
+.semana{font-size:20px;max-width:60ch;margin-bottom:24px}
+.semana strong{font-weight:700}
+.bloco{margin-bottom:48px}
+.bloco p{margin-bottom:14px;max-width:62ch}
+.pagina-painel{max-width:1100px}
+
+/* diálogo */
+dialog{border:0;border-radius:16px;background:var(--sup);color:var(--texto);padding:28px;width:min(480px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.72)}
+dialog h2{font-family:var(--disp);font-weight:800;font-size:34px;line-height:1.05;margin-bottom:18px}
+#dlgCorpo{display:flex;flex-direction:column;gap:16px}
+#dlgCorpo input{background:var(--sup2)}
+.dlg-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;background:var(--texto);color:#000;font-weight:600;padding:14px 22px;border-radius:12px;width:max-content;max-width:min(560px,92vw);transition:opacity .2s,transform .2s;pointer-events:none;z-index:50}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+#print{display:none}
+
+/* ===== mobile ===== */
+@media (max-width:900px){
+  .topo{position:static;flex-wrap:wrap;gap:6px 20px;padding:12px 16px}
+  .marca strong{font-size:26px}
+  .nav{order:3;width:100%;overflow-x:auto;margin:0 -8px}
+  .nav button{padding:8px 10px}
+  .assinatura-canto{padding:16px 16px 28px}
+  .nav button[aria-current=page]::after{left:10px;right:10px}
+  .topo-extra{order:2;margin-left:auto;padding-inline:8px}
+  .marca span,.so-desk{display:none}
+  .topo{flex-wrap:wrap}
+  .marca{flex:1}
+  main{padding:4px 16px 48px}
+  .duas{grid-template-columns:1fr;gap:0}
+  .lista{position:static;max-height:none}
+  body.ficha-aberta .lista{display:none}
+  body:not(.ficha-aberta) .ficha{display:none}
+  body.sem-clientes .ficha{display:block}
+  .voltar{display:inline-flex}
+  .ficha-nome{font-size:42px}
+  .fluxo-titulo{font-size:40px}
+  .btn.enorme{font-size:28px;min-height:88px;padding:14px 18px}
+  .acoes-principais{margin-top:-8px}
+  .saldo{margin:28px 0 44px}
+  .ext-cab{display:none}
+  .ext-linha{grid-template-columns:1fr auto;gap:2px 12px}
+  .ext-data{grid-column:1/-1;font-size:14px}
+  .ext-saldo{grid-column:1;text-align:left;font-size:14px}
+  .ext-acao{grid-column:2;grid-row:3}
+  .carrinho li{grid-template-columns:1fr auto;}
+  .carrinho .sub{grid-column:1;text-align:left}
+  .modo{display:flex}
+  .modo button{flex:1;padding:8px 10px;white-space:nowrap;font-size:15px}
+  .totais,.colunas{grid-template-columns:1fr;gap:36px}
+  .chip{width:100%;text-align:left;border-radius:14px}
+  .chip span,.chip b{white-space:nowrap}
+  .parcelas li,.cobrancas li{grid-template-columns:1fr auto;gap:2px 12px;padding:14px 0}
+  .parcelas .p-ac,.cobrancas .p-ac{grid-column:1 / -1;justify-content:flex-start}
+  .premio-linha{grid-template-columns:40px 1fr;}
+  .premio-linha input{grid-column:2}
+  .jog{min-width:0;width:100%}
+  .lista-cab-liga{flex-wrap:wrap}
+  .lista-cab-liga .campo{flex:1 1 100%}
+  .jogadores li.on{padding-bottom:14px}
+  .lista-prod li{grid-template-columns:1fr auto;gap:4px 12px;padding:14px 0}
+  .lista-prod .cab{display:none}
+  .lista-prod .preco,.lista-prod .valor{text-align:left}
+  .lista-prod .estoque{grid-column:2;grid-row:1 / span 2}
+  .pagina h2{font-size:44px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* ===== impressão / PDF ===== */
+@media print{
+  @page{margin:16mm}
+  html,body{background:#fff!important;color:#000!important}
+  .topo,main,.toast,dialog,.assinatura-canto{display:none!important}
+  #print{display:block!important;font:13px/1.45 var(--corpo);color:#000}
+  #print .p-cab{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:24px}
+  #print .p-marca{font-family:var(--disp);font-weight:800;font-size:26px;letter-spacing:.03em}
+  #print h1{font-family:var(--disp);font-weight:800;font-size:34px;line-height:1}
+  #print .p-sub{color:#444;margin-top:4px}
+  #print .p-saldo{font-size:18px;margin:18px 0 4px}
+  #print .p-saldo strong{font-family:var(--disp);font-size:30px}
+  #print .p-emit{color:#555;margin-bottom:20px}
+  #print h2{font-family:var(--disp);font-size:20px;margin:24px 0 8px}
+  #print table{width:100%;border-collapse:collapse}
+  #print th{text-align:left;border-bottom:1px solid #000;padding:6px 4px;font-size:13px}
+  #print td{padding:6px 4px;border-bottom:1px solid #ddd;vertical-align:top}
+  #print .n{text-align:right;white-space:nowrap}
+  #print .p-totais{display:flex;gap:40px;margin:10px 0 24px}
+  #print .p-totais strong{display:block;font-family:var(--disp);font-size:28px}
+  #print tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca"><strong>ARENA PRIME</strong><span>Crédito da loja</span></div>
+  <nav class="nav" aria-label="Seções">
+    <button data-view="clientes" aria-current="page">Clientes</button>
+    <button data-view="produtos">Produtos</button>
+    <button data-view="liga">Liga</button>
+    <button data-view="painel">Painel</button>
+  </nav>
+  <button class="topo-extra" data-view="backup">Backup<span class="so-desk"> e suporte</span></button>
+</header>
+
+<main>
+  <!-- CLIENTES -->
+  <section id="v-clientes" class="view duas" aria-label="Clientes">
+    <aside class="lista">
+      <button class="btn prim cadastrar" data-acao="novo-cliente">Cadastrar cliente</button>
+      <div class="campo">
+        <label for="busca">Buscar cliente</label>
+        <input id="busca" type="search" autocomplete="off" placeholder="Nome ou apelido">
+      </div>
+      <div class="aviso exemplo" id="avisoExemplo" hidden>
+        <p>Estes são dados de exemplo. Apague antes de começar a usar de verdade.</p>
+        <button class="btn" data-acao="apagar-tudo">Apagar dados de exemplo</button>
+      </div>
+      <div class="aviso" id="avisoBackup" hidden>
+        <p id="avisoTexto"></p>
+        <button class="btn" data-acao="exportar">Baixar backup agora</button>
+      </div>
+      <ul id="listaClientes" aria-label="Lista de clientes"></ul>
+    </aside>
+    <section class="ficha" id="ficha"></section>
+  </section>
+
+  <!-- PRODUTOS -->
+  <section id="v-produtos" class="view" hidden>
+    <div class="pagina">
+      <h2>Produtos</h2>
+      <p class="intro">Cadastre cada produto uma vez, com o preço e quantas unidades a loja tem. Quando alguém compra, o estoque desconta sozinho.</p>
+      <button class="btn prim cadastrar" style="width:auto;padding-inline:32px" data-acao="novo-produto">Cadastrar produto</button>
+      <p class="estoque-total" id="estoqueTotal" hidden></p>
+      <div id="listaProd"></div>
+    </div>
+  </section>
+
+  <!-- LIGA -->
+  <section id="v-liga" class="view" hidden>
+    <div class="pagina" id="liga"></div>
+  </section>
+
+  <!-- PAINEL -->
+  <section id="v-painel" class="view" hidden>
+    <div class="pagina pagina-painel" id="painel"></div>
+  </section>
+
+  <!-- BACKUP -->
+  <section id="v-backup" class="view" hidden>
+    <div class="pagina" id="backup"></div>
+  </section>
+</main>
+
+<footer class="assinatura-canto"><strong>ARENA PRIME</strong><span>Phosphoros Studio</span></footer>
+<div id="print"></div>
+<datalist id="catList"></datalist>
+
+<dialog id="dlg" aria-labelledby="dlgTitulo">
+  <div id="dlgForm">
+    <h2 id="dlgTitulo"></h2>
+    <div id="dlgCorpo"></div>
+    <p class="erro" id="dlgErro" role="alert"></p>
+    <div class="dlg-acoes">
+      <button type="button" class="btn fantasma" id="dlgCancelar">Cancelar</button>
+      <button type="button" class="btn prim" id="dlgOk">Salvar</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<input type="file" id="arqImport" accept="application/json,.json" hidden>
+
+<script>
+(() => {
+/* ===== estado e storage ===== */
+const KEY = 'arenaprime_credito_v1';
+const vazio = () => ({ clientes: [], produtos: [], lancs: [], planos: [], ultimoBackup: null });
+function load(){
+  try{ const r = localStorage.getItem(KEY); if(!r) return vazio(); return { ...vazio(), ...JSON.parse(r) }; }
+  catch(e){ return vazio(); }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+  catch(e){ if(!avisouStorage){ avisouStorage = true; setTimeout(() => toast('Este navegador não deixa salvar. Abra o arquivo direto no Chrome pra os dados ficarem guardados.'), 4200); } return false; }
+}
+let S = load();
+let avisouStorage = false;
+const ui = { liga:{ sel:{}, busca:'', padrao:'Pix', valor:null, premios:null }, view:'clientes', sel:null, filtro:'todos', busca:'', fluxo:null, pagto:null, carrinho:[], cat: S.ultimaCat || '' };
+
+/* ===== utilidades ===== */
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl = c => (c/100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+const fmtSaldo = v => v < 0 ? '− ' + brl(-v) : brl(v);
+const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function parseValor(str){
+  let s = String(str || '').trim().replace(/r\$|\s/gi, '');
+  if(!s) return null;
+  if(s.includes(',')) s = s.replace(/\./g,'').replace(',', '.');
+  const n = Number(s);
+  if(!isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
+const dataCurta = iso => new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+const dataHora = iso => { const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }); };
+const cli = id => S.clientes.find(c => c.id === id);
+const lancsDe = id => S.lancs.filter(l => l.cid === id);
+const efeito = l => l.tipo === 'credito' ? l.total : l.tipo === 'debito' ? -l.total : 0;   // 'venda' = paga na hora, não mexe no saldo
+const saldo = id => lancsDe(id).reduce((a,l) => a + efeito(l), 0);
+const sinal = l => l.tipo === 'credito' ? '+ ' : l.tipo === 'debito' ? '− ' : '';
+const FORMAS = ['Dinheiro','Pix','Cartão'];
+const valorTxt = l => l.tipo === 'beneficio' ? 'benefício' : sinal(l) + brl(l.total);
+/* cartão fidelidade: cada compra registrada marca uma bolinha; a cada 10, o dono dá o benefício que quiser */
+const VALIDADE_PREMIO = 45;   // dias; só crédito de prêmio da liga vence
+/* Percorre o extrato em ordem e separa o crédito em "prêmios com validade" e "crédito livre".
+   Compras gastam primeiro o prêmio que vence antes. Retorna também os prêmios que já passaram da data. */
+function creditoDetalhe(cid){
+  const c = cli(cid), hoje = hojeISO();
+  const ls = lancsDe(cid).filter(l => !l.estornoDe).sort((a,b) => a.data.localeCompare(b.data));
+  const vencidosLanc = {};  ls.filter(l => l.venceDe).forEach(l => { vencidosLanc[l.venceDe] = estornado(l.id) ? 'perdoado' : 'lancado'; });
+  let livre = 0, divida = 0; const premios = []; const aVencer = [];
+  const expirarAte = dia => premios.forEach(b => {
+    if(b.valor <= 0 || b.expirado || diasEntre(b.vence, dia) <= 0) return;
+    const st = vencidosLanc[b.id];
+    if(st === 'perdoado'){ b.vence = null; return; }
+    if(st === 'lancado') return;            // o lançamento de vencimento cuida disso quando chegar a vez dele
+    b.expirado = true; aVencer.push({ id:b.id, valor:b.valor, vence:b.vence }); b.valor = 0;
+  });
+  for(const l of ls){
+    if(estornado(l.id)) continue;
+    expirarAte(l.data.slice(0,10));
+    if(l.tipo === 'credito'){
+      let a = l.total; const d = Math.min(divida, a); divida -= d; a -= d;
+      if(a > 0){ if(l.vence && !(c && c.semValidade)) premios.push({ id:l.id, valor:a, vence:l.vence }); else livre += a; }
+    } else if(l.tipo === 'debito'){
+      if(l.venceDe){ const b = premios.find(x => x.id === l.venceDe); if(b) b.valor = Math.max(0, b.valor - l.total); continue; }
+      let a = l.total;
+      premios.filter(b => b.valor > 0 && b.vence).sort((x,y) => x.vence.localeCompare(y.vence)).forEach(b => { const u = Math.min(b.valor, a); b.valor -= u; a -= u; });
+      premios.filter(b => b.valor > 0 && !b.vence).forEach(b => { const u = Math.min(b.valor, a); b.valor -= u; a -= u; });
+      const u = Math.min(livre, a); livre -= u; a -= u; divida += a;
+    }
+  }
+  expirarAte(hoje);
+  const ativos = premios.filter(b => b.valor > 0 && b.vence && !b.expirado).sort((x,y) => x.vence.localeCompare(y.vence));
+  return { ativos, livre, divida, aVencer };
+}
+/* Cria no extrato o lançamento de "prêmio vencido" pros prêmios que passaram da data. Roda a cada render. */
+function processarVencimentos(){
+  let mudou = false;
+  S.clientes.forEach(c => {
+    if(c.semValidade) return;
+    creditoDetalhe(c.id).aVencer.forEach(v => {
+      S.lancs.push({ id:uid(), cid:c.id, tipo:'debito', venceDe:v.id, total:v.valor, itens:[], desc:`Prêmio da liga vencido (valia até ${fmtData(v.vence)})`, data:new Date(v.vence + 'T23:59:59').toISOString() });
+      mudou = true;
+    });
+  });
+  if(mudou) save();
+}
+const META_FIEL = 10;
+const valido = l => !l.estornoDe && !estornado(l.id);
+function fidelidade(cid){
+  const ls = lancsDe(cid).filter(valido);
+  const compras = ls.filter(l => l.compra).length;
+  const resgates = ls.filter(l => l.tipo === 'beneficio').length;
+  const marcadas = Math.max(0, compras - resgates * META_FIEL);
+  return { compras, resgates, marcadas, completo: marcadas >= META_FIEL };
+}
+/* cartão: vezes e total cobrado na maquininha (juros ficam só de registro, não entram no saldo) */
+function lerCartao(st, base){
+  const vezes = st.vezes === undefined || String(st.vezes).trim() === '' ? 1 : Number(st.vezes);
+  const cobrado = st.cobrado === undefined || String(st.cobrado).trim() === '' ? base : parseValor(st.cobrado);
+  if(!Number.isInteger(vezes) || vezes < 1 || vezes > 24) return { erro:'Em vezes, use um número de 1 a 24.' };
+  if(!cobrado || cobrado < base) return { erro:`O total cobrado na maquininha não pode ser menor que ${brl(base)}.` };
+  return { vezes, cobrado };
+}
+function cartaoInfo(st, base){
+  const r = lerCartao(st, base); if(r.erro) return r.erro;
+  const parc = r.vezes > 1 ? `${r.vezes}x de ${brl(Math.round(r.cobrado / r.vezes))}. ` : '';
+  return r.cobrado > base ? `${parc}Os ${brl(r.cobrado - base)} a mais são juros da maquininha e não entram na conta do cliente.` : (parc || 'À vista no cartão.');
+}
+function cartaoHTML(px, st, base){
+  return `<div class="cartao">
+    <div class="dois">
+      <div class="campo" style="max-width:110px"><label for="${px}Vezes">Vezes</label><input id="${px}Vezes" inputmode="numeric" autocomplete="off" value="${esc(st.vezes ?? 1)}"></div>
+      <div class="campo" style="max-width:260px"><label for="${px}Cobrado">Total na maquininha (R$)</label><input id="${px}Cobrado" inputmode="decimal" autocomplete="off" value="${esc(st.cobrado ?? centsInput(base))}"></div>
+    </div>
+    <p class="dica" id="${px}Info" aria-live="polite">${cartaoInfo(st, base)}</p>
+  </div>`;
+}
+function formaTxt(forma, cart, base){
+  if(forma !== 'Cartão') return forma.toLowerCase();
+  return `cartão ${cart.vezes}x${cart.cobrado > base ? `, ${brl(cart.cobrado)} cobrado na maquininha` : ''}`;
+}
+const SEM_CAT = 'Sem categoria';
+const catDe = p => (p.categoria || '').trim() || SEM_CAT;
+function categorias(){
+  const set = [...new Set(S.produtos.map(catDe))];
+  return set.sort((a,b) => a === SEM_CAT ? 1 : b === SEM_CAT ? -1 : a.localeCompare(b,'pt-BR'));
+}
+const estornado = id => S.lancs.some(l => l.estornoDe === id);
+const pad = n => String(n).padStart(2,'0');
+const isoDe = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hojeISO = () => isoDe(new Date());
+function addMeses(iso, n){
+  const [y,m,d] = iso.split('-').map(Number);
+  const ult = new Date(y, m - 1 + n + 1, 0).getDate();   // último dia do mês de destino
+  return isoDe(new Date(y, m - 1 + n, Math.min(d, ult)));  // 31/01 + 1 mês = 28 ou 29/02
+}
+function addDias(iso, n){ const [y,m,d] = iso.split('-').map(Number); return isoDe(new Date(y, m - 1, d + n)); }
+const fmtData = iso => iso.split('-').reverse().join('/');
+function diasEntre(a, b){ const [y1,m1,d1] = a.split('-').map(Number), [y2,m2,d2] = b.split('-').map(Number); return Math.round((Date.UTC(y2,m2-1,d2) - Date.UTC(y1,m1-1,d1)) / 864e5); }
+const centsInput = c => (c/100).toFixed(2).replace('.', ',');
+const planoAtivo = cid => (S.planos || []).find(p => p.cid === cid && !p.cancelado && p.parcelas.some(x => !x.pagaLanc));
+const plural = (n, um, varios) => n === 1 ? um : varios;
+function statusParcela(x, hoje = hojeISO()){
+  if(x.pagaLanc){ const l = S.lancs.find(y => y.id === x.pagaLanc); return { tipo:'paga', txt: l ? `paga em ${dataCurta(l.data)}` : 'paga' }; }
+  const d = diasEntre(hoje, x.venc);
+  if(d < 0) return { tipo:'atrasada', txt:`atrasada há ${-d} ${plural(-d,'dia','dias')}` };
+  if(d === 0) return { tipo:'breve', txt:'vence hoje' };
+  if(d <= 7) return { tipo:'breve', txt:`vence em ${d} ${plural(d,'dia','dias')}` };
+  return { tipo:'aberta', txt:'em aberto' };
+}
+const temAtrasada = cid => { const pl = planoAtivo(cid); return !!pl && pl.parcelas.some(x => statusParcela(x).tipo === 'atrasada'); };
+const diasDesde = iso => Math.floor((Date.now() - new Date(iso)) / 864e5);
+function waNumero(w){ let d = String(w || '').replace(/\D/g,''); if(!d) return null; if(d.length <= 11) d = '55' + d; return d; }
+function linhasExtrato(cid){
+  const asc = lancsDe(cid).slice().sort((a,b) => a.data.localeCompare(b.data));
+  let acc = 0;
+  return asc.map(l => { acc += efeito(l); return { ...l, saldoApos: acc }; }).reverse();
+}
+
+let tt;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 4000); }
+
+/* ===== diálogo ===== */
+const dlg = $('#dlg');
+let dlgCb = null;
+function abrirDialogo({ titulo, corpo, confirmar = 'Salvar', perigo = false, aoConfirmar }){
+  $('#dlgTitulo').textContent = titulo;
+  $('#dlgCorpo').innerHTML = corpo;
+  const b = $('#dlgOk'); b.textContent = confirmar; b.className = 'btn ' + (perigo ? 'perigo-cheio' : 'prim');
+  $('#dlgErro').textContent = '';
+  b.hidden = false; $('#dlgCancelar').textContent = 'Cancelar';
+  dlgCb = aoConfirmar;
+  dlg.showModal();
+  const f = dlg.querySelector('#dlgCorpo input'); (f || b).focus();
+}
+function confirmarDialogo(){
+  if(!dlgCb){ dlg.close(); return; }
+  const r = dlgCb();
+  if(typeof r === 'string'){ $('#dlgErro').textContent = r; return; }
+  dlg.close();
+}
+$('#dlgOk').addEventListener('click', confirmarDialogo);
+dlg.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.tagName === 'INPUT'){ e.preventDefault(); confirmarDialogo(); } });
+$('#dlgCancelar').addEventListener('click', () => dlg.close());
+function abrirMenu(titulo, itens){
+  $('#dlgTitulo').textContent = titulo;
+  $('#dlgCorpo').innerHTML = `<ul class="menu">${itens.map(([a,t,sub]) => `<li><button class="menu-item" data-menu="${a}"><strong>${t}</strong>${sub ? `<span>${sub}</span>` : ''}</button></li>`).join('')}</ul>`;
+  $('#dlgErro').textContent = '';
+  $('#dlgOk').hidden = true; $('#dlgCancelar').textContent = 'Fechar';
+  dlgCb = null;
+  dlg.showModal();
+  dlg.querySelector('.menu-item').focus();
+}
+
+/* ===== render: lista ===== */
+function renderLista(){
+  const b = norm(ui.busca);
+  let arr = S.clientes.map(c => ({ c }));
+  if(b) arr = arr.filter(({c}) => norm(c.nome + ' ' + (c.apelido || '')).includes(b));
+  arr.sort((x,y) => x.c.nome.localeCompare(y.c.nome, 'pt-BR'));
+  document.body.classList.toggle('sem-clientes', !S.clientes.length);
+  const ul = $('#listaClientes');
+  if(!S.clientes.length) ul.innerHTML = `<li class="vazio-lista">Nenhum cliente cadastrado ainda.</li>`;
+  else if(!arr.length) ul.innerHTML = `<li class="vazio-lista">Ninguém encontrado${b ? ` para “${esc(ui.busca)}”` : ''}.</li>`;
+  else ul.innerHTML = arr.map(({c}) => `<li><button class="linha-cli" data-id="${c.id}" ${ui.sel === c.id ? 'aria-current="true"' : ''}><span class="lc-nome"><strong>${esc(c.nome)}</strong>${c.apelido ? `<span>${esc(c.apelido)}</span>` : ''}</span></button></li>`).join('');
+  $('#avisoExemplo').hidden = !S.exemplo;
+  const av = $('#avisoBackup');
+  const d = S.ultimoBackup ? diasDesde(S.ultimoBackup) : null;
+  if(S.exemplo || !S.lancs.length || (d !== null && d < 3)) av.hidden = true;
+  else {
+    av.hidden = false;
+    $('#avisoTexto').textContent = d === null
+      ? 'Nenhum backup feito ainda. Os dados ficam só neste navegador.'
+      : `Último backup há ${d} dias. Os dados ficam só neste navegador.`;
+  }
+}
+
+/* ===== render: ficha ===== */
+const nomeCurto = c => c ? (c.apelido || c.nome.split(' ')[0]) : '';
+let confirmando = false;
+function travaClique(chave){ if(confirmando === chave) return false; confirmando = chave; setTimeout(() => { if(confirmando === chave) confirmando = false; }, 600); return true; }   // evita clique duplo no mesmo botão
+function saldoFrase(v){ return v > 0 ? `fica com <strong>${brl(v)}</strong> de crédito` : v < 0 ? `fica devendo <strong>${brl(-v)}</strong>` : 'fica <strong>zerado</strong>'; }
+function saldoCurto(v){ return v > 0 ? `tem ${brl(v)} de crédito` : v < 0 ? `deve ${brl(-v)}` : 'saldo zerado'; }
+
+function chipsHTML(){
+  if(!S.produtos.length) return `<p class="dica" style="margin-bottom:22px">Nenhum produto cadastrado ainda. Use "Não está na lista" abaixo, ou cadastre os produtos em <strong>Produtos</strong>.</p>`;
+  const cats = categorias();
+  if(ui.cat && !cats.includes(ui.cat)) ui.cat = '';
+  const abas = cats.length > 1 ? `<div class="filtros cats" role="group" aria-label="Categoria dos produtos"><button data-cat="" aria-pressed="${!ui.cat}">Todos</button>${cats.map(c => `<button data-cat="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c)}</button>`).join('')}</div>` : '';
+  const lista = S.produtos.filter(p => !ui.cat || catDe(p) === ui.cat).sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'));
+  return abas + `<div class="chips">${lista.map(p => {
+    const it = ui.carrinho.find(i => i.pid === p.id);
+    const est = p.estoque == null ? '' : p.estoque > 0 ? ` <span>${p.estoque} na loja</span>` : ' <span class="zerado">esgotado</span>';
+    return `<button class="chip ${it ? 'no-carrinho' : ''}" data-produto="${p.id}" aria-label="${esc(p.nome)}, ${brl(p.preco)}${p.estoque != null ? `, ${p.estoque} na loja` : ''}${it ? `, ${it.qtd} na compra` : ''}">${esc(p.nome)} <span>${brl(p.preco)}</span>${est}${it ? `<b>${it.qtd}</b>` : ''}</button>`;
+  }).join('')}</div>`;
+}
+function contaCompra(){
+  const c = cli(ui.sel), s = saldo(c.id);
+  const total = ui.carrinho.reduce((a,i) => a + i.preco * i.qtd, 0);
+  const pc = ui.pc || {};
+  const usado = pc.modo === 'credito' ? Math.min(Math.max(s,0), total) : 0;
+  const resto = total - usado;
+  let depois = s, pronto = false;
+  if(pc.modo === 'hora'){ pronto = !!pc.forma; }
+  else if(pc.modo === 'credito'){ pronto = resto === 0 || !!pc.resto; depois = s - total + (resto > 0 && pc.resto && pc.resto !== 'devendo' ? resto : 0); }
+  else if(pc.modo === 'fiado'){ pronto = true; depois = s - total; }
+  return { c, s, total, usado, resto, depois, pronto, pc };
+}
+function carrinhoHTML(){
+  if(!ui.carrinho.length) return '';
+  const { c, s, total, usado, resto, depois, pronto, pc } = contaCompra();
+  const nm = esc(nomeCurto(c));
+  const chips = (attr, atual, lista) => `<div class="filtros formas" role="group">${lista.map(([v,t]) => `<button data-${attr}="${v}" aria-pressed="${atual === v}">${t}</button>`).join('')}</div>`;
+  const formas = FORMAS.map(f => [f,f]);
+  const ops = [['hora','Pagou na hora','Dinheiro, pix ou cartão. Não mexe no crédito.']];
+  if(s > 0) ops.push(['credito','Usar o crédito', total > s ? `Tem ${brl(s)}, cobre só parte da compra` : `Tem ${brl(s)} de crédito`]);
+  if(s < total) ops.push(['fiado','Fica devendo', 'O valor vai pra conta, pra pagar depois']);   // quem tem crédito suficiente usa o crédito
+  let detalhe = '';
+  if(pc.modo === 'hora') detalhe = `<p class="rotulo">Pagou com</p>${chips('cforma', pc.forma, formas)}${pc.forma === 'Cartão' ? cartaoHTML('c', pc, total) : ''}`;
+  if(pc.modo === 'credito' && resto > 0) detalhe = `<p class="rotulo">Usa ${brl(usado)} do crédito. Os ${brl(resto)} que faltam:</p>${chips('cresto', pc.resto, [...formas, ['devendo','Fica devendo']])}${pc.resto === 'Cartão' ? cartaoHTML('c', pc, resto) : ''}`;
+  if(pc.modo === 'fiado') detalhe = chips('cparc', pc.parc || 'vista', [['vista','Paga de uma vez depois'],['parcelado','Vai parcelar']]);
+  return `<h3 class="secao" style="margin-top:36px">Na compra</h3>
+  <ul class="carrinho" aria-label="Itens da compra">${ui.carrinho.map((i,k) => `
+    <li><span>${esc(i.nome)}</span>
+      ${i.pid ? `<span class="qtd"><button data-qtd="${k}:-1" aria-label="Diminuir ${esc(i.nome)}">−</button><output aria-label="Quantidade">${i.qtd}</output><button data-qtd="${k}:1" aria-label="Aumentar ${esc(i.nome)}">+</button></span>` : '<span></span>'}
+      <span class="sub num">${brl(i.preco * i.qtd)}</span>
+      <button class="btn-mini" data-tirar="${k}" aria-label="Tirar ${esc(i.nome)}">Tirar</button></li>`).join('')}
+  </ul>
+  <p class="tot num" style="margin:16px 0 40px">${brl(total)}</p>
+  <h3 class="secao" id="hComoPagou">Como pagou?</h3>
+  <div class="opcoes" role="radiogroup" aria-labelledby="hComoPagou">
+    ${ops.map(([v,t,sub]) => `<button class="opcao" role="radio" aria-checked="${pc.modo === v}" data-cmodo="${v}"><span><strong>${t}</strong><small>${sub}</small></span></button>`).join('')}
+  </div>
+  ${detalhe}
+  ${pronto ? `<div class="fechamento">
+    <p class="depois">${pc.modo === 'hora' ? `Venda paga no ${esc(pc.forma.toLowerCase())}. A conta de ${nm} não muda.` : `Depois da compra, ${nm} ${saldoFrase(depois)}.`}</p>
+    <p class="erro" id="cErro" role="alert"></p>
+    <button class="btn prim grande" data-acao="confirmar-compra">Confirmar compra</button>
+  </div>` : ''}`;
+}
+function atualizarLancar(){ const a = $('#chipsBox'), b = $('#carrinhoBox'); if(a) a.innerHTML = chipsHTML(); if(b) b.innerHTML = carrinhoHTML(); }
+
+function proximaParcela(cid){
+  const pl = planoAtivo(cid); if(!pl) return null;
+  const i = pl.parcelas.findIndex(x => !x.pagaLanc);
+  return { pl, i, x:pl.parcelas[i], resta: pl.parcelas.filter(x => !x.pagaLanc).reduce((a,x) => a + x.valor, 0) };
+}
+function resumoPremio(c){
+  if(c.semValidade || saldo(c.id) <= 0) return '';
+  const { ativos } = creditoDetalhe(c.id); if(!ativos.length) return '';
+  const b = ativos[0], d = diasEntre(hojeISO(), b.vence);
+  const quando = d === 0 ? 'vence hoje' : d <= 7 ? `vence em ${d} ${plural(d,'dia','dias')} (${fmtData(b.vence)})` : `vale até ${fmtData(b.vence)}`;
+  return `<p class="saldo-parcela ${d <= 7 ? 'breve' : 'aberta'}">${brl(b.valor)} de prêmio da liga ${quando}</p>`;
+}
+function resumoParcela(c){
+  const r = proximaParcela(c.id); if(!r) return '';
+  const st = statusParcela(r.x);
+  return `<p class="saldo-parcela ${st.tipo}">${r.i+1}ª parcela de ${brl(r.x.valor)}, ${st.tipo === 'aberta' ? `vence em ${fmtData(r.x.venc)}` : st.txt}</p>`;
+}
+function fidelidadeHTML(c){
+  const f = fidelidade(c.id);
+  const on = Math.min(f.marcadas, META_FIEL), extra = f.marcadas - META_FIEL;
+  return `<section class="fiel ${f.completo ? 'completo' : ''}" aria-labelledby="hFiel">
+    <div class="fiel-cab"><h3 class="secao" id="hFiel">Cartão fidelidade</h3><span>${on} de ${META_FIEL} compras${extra > 0 ? `, mais ${extra} ${plural(extra,'guardada','guardadas')} pro próximo` : ''}</span></div>
+    <ul class="bolinhas" role="img" aria-label="${on} de ${META_FIEL} bolinhas marcadas">${Array.from({ length:META_FIEL }, (_, i) => `<li class="${i < on ? 'on' : ''}"></li>`).join('')}</ul>
+    ${f.completo ? `<div class="fiel-aviso"><p>Cartão completo. ${esc(nomeCurto(c))} ganhou um benefício.</p><button class="btn prim" data-acao="dar-beneficio">Dar benefício</button></div>` : ''}
+  </section>`;
+}
+function planoHTML(c){
+  const pl = planoAtivo(c.id);
+  if(!pl) return '';
+  const hoje = hojeISO(), n = pl.parcelas.length;
+  const pagas = pl.parcelas.filter(x => x.pagaLanc).length;
+  return `<section class="plano" aria-labelledby="hPlano">
+    <div class="grupo-cab"><h3 class="secao" id="hPlano">Parcelamento</h3><span>${brl(pl.total)} em ${n}x, ${pagas} de ${n} ${plural(pagas,'paga','pagas')}</span></div>
+    <ul class="parcelas">${pl.parcelas.map((x,i) => { const st = statusParcela(x, hoje); return `
+      <li class="${st.tipo}"><span class="p-n">${i+1}ª parcela</span><span class="p-v">${brl(x.valor)}</span><span class="p-d">${fmtData(x.venc)}</span><span class="p-st">${st.txt}</span>
+      <span class="p-ac">${!x.pagaLanc && st.tipo !== 'aberta' ? `<button class="btn-mini forte" data-cobrar="${pl.id}:${i}" aria-label="Cobrar ${i+1}ª parcela no WhatsApp">Cobrar no WhatsApp</button>` : ''}</span></li>`; }).join('')}
+    </ul>
+    <p class="dica">Quando a pessoa pagar uma parcela, use o botão Pagou.</p>
+  </section>`;
+}
+function extratoHTML(c){
+  const linhas = linhasExtrato(c.id);
+  return `<section aria-labelledby="hExtrato">
+    <h3 class="secao" id="hExtrato">Extrato</h3>
+    ${!linhas.length ? '<p class="dica">Nenhuma compra ou pagamento ainda.</p>' : `
+    <div class="ext-cab" aria-hidden="true"><span>Data</span><span>Descrição</span><span class="n">Valor</span><span class="n">Saldo depois</span><span></span></div>
+    <ul class="extrato">${linhas.map(l => {
+      const est = estornado(l.id);
+      const pode = !est && !l.estornoDe;
+      return `<li class="ext-linha ${est ? 'estornado' : ''}">
+        <span class="ext-data">${dataHora(l.data)}</span>
+        <span class="ext-desc"><span>${esc(l.desc)}</span>${est ? '<em>estornado</em>' : ''}</span>
+        <span class="ext-valor ${l.tipo}">${valorTxt(l)}</span>
+        <span class="ext-saldo"><span class="sr">Saldo depois: </span>${fmtSaldo(l.saldoApos)}</span>
+        <span class="ext-acao">${pode ? `<button class="btn-mini" data-estornar="${l.id}" aria-label="Desfazer ${esc(l.desc)}">Desfazer</button>` : ''}</span>
+      </li>`; }).join('')}</ul>`}
+  </section>`;
+}
+
+function renderFicha(){
+  const box = $('#ficha');
+  const c = ui.sel && cli(ui.sel);
+  if(!c){
+    box.innerHTML = S.clientes.length
+      ? `<div class="ficha-vazia"><h2>Escolha um cliente</h2><p>Selecione alguém na lista pra registrar uma compra, um pagamento ou ver o extrato.</p></div>`
+      : `<div class="ficha-vazia"><h2>Comece pelos clientes</h2><p>Cadastre quem tem conta na loja. Depois, em Produtos, cadastre o que a loja vende.</p>
+         <div class="acoes"><button class="btn prim" data-acao="novo-cliente">Cadastrar primeiro cliente</button><button class="btn" data-acao="exemplo">Ver com dados de exemplo</button></div></div>`;
+    return;
+  }
+  if(ui.fluxo) return renderFluxo(c);
+  const s = saldo(c.id);
+  const cls = s > 0 ? 'pos' : s < 0 ? 'neg' : 'zero';
+  const rot = s > 0 ? 'tem de crédito na loja' : s < 0 ? 'está devendo pra loja' : 'sem crédito e sem dívida';
+  box.innerHTML = `
+    <button class="btn fantasma voltar" data-acao="voltar">Voltar pra lista</button>
+    <div class="ficha-topo">
+      <div>
+        <h2 class="ficha-nome" id="fichaNome" tabindex="-1">${esc(c.nome)}</h2>
+        <p class="ficha-meta">${c.apelido ? `<span>${esc(c.apelido)}</span>` : ''}${c.whats ? `<span>${esc(c.whats)}</span>` : '<span>Sem WhatsApp cadastrado</span>'}</p>
+      </div>
+      <button class="btn" data-acao="mais" aria-haspopup="dialog">Mais opções</button>
+    </div>
+    <div class="saldo ${cls}">
+      <p class="saldo-num">${brl(Math.abs(s))}</p>
+      <p class="saldo-rot">${rot}</p>
+      ${resumoParcela(c)}
+      ${resumoPremio(c)}
+    </div>
+    <div class="acoes-principais">
+      <button class="btn prim enorme" data-fluxo="comprou">Comprou<small>Box, booster, inscrição da liga...</small></button>
+      ${s < 0 ? `<button class="btn enorme" data-fluxo="pagou">Pagou a dívida<small>${(() => { const r = proximaParcela(c.id); return r ? `Parcela da vez: ${brl(r.x.valor)}` : `Deve ${brl(-s)}`; })()}</small></button>` : ''}
+    </div>
+    ${fidelidadeHTML(c)}
+    ${planoHTML(c)}
+    ${extratoHTML(c)}`;
+}
+
+function renderFluxo(c){
+  const box = $('#ficha');
+  const s = saldo(c.id);
+  const topo = titulo => `
+    <button class="btn fantasma voltar-fluxo" data-acao="sair-fluxo">Cancelar e voltar</button>
+    <p class="fluxo-quem"><span>${esc(c.nome)}</span><span>${saldoCurto(s)}</span></p>
+    <h2 class="fluxo-titulo" id="fluxoTitulo" tabindex="-1">${titulo}</h2>`;
+  const nm = esc(nomeCurto(c));
+
+  if(ui.fluxo === 'comprou'){
+    box.innerHTML = `<div class="fluxo">${topo(`O que ${nm} levou?`)}
+      <div id="chipsBox">${chipsHTML()}</div>
+      <details class="outro">
+        <summary>Não está na lista</summary>
+        <div class="avulso">
+          <div class="campo"><label for="avValor">Valor (R$)</label><input id="avValor" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+          <div class="campo cresce"><label for="avMotivo">O que foi</label><input id="avMotivo" autocomplete="off" placeholder="Ex: carta avulsa"></div>
+          <button class="btn" data-acao="add-avulso">Pôr na compra</button>
+        </div>
+        <p class="erro" id="avErro" role="alert"></p>
+      </details>
+      <div id="carrinhoBox">${carrinhoHTML()}</div>
+    </div>`;
+    return;
+  }
+
+  if(ui.fluxo === 'pagou'){
+    const r = proximaParcela(c.id);
+    const ops = [];
+    if(r){
+      const st = statusParcela(r.x);
+      ops.push({ op:'parcela', titulo:`${r.i+1}ª parcela`, sub: st.tipo === 'aberta' ? `vence em ${fmtData(r.x.venc)}` : st.txt, valor:r.x.valor });
+      if(r.pl.parcelas.filter(x => !x.pagaLanc).length > 1) ops.push({ op:'quitar', titulo:'Todas as parcelas que faltam', sub:'quita o parcelamento', valor:r.resta });
+    } else if(s < 0){
+      ops.push({ op:'divida', titulo:'A dívida toda', sub:'fica zerado', valor:-s });
+    }
+    ops.push({ op:'outro', titulo:'Outro valor', sub: r ? 'não marca parcela como paga' : (s < 0 ? 'pagamento de parte da dívida' : 'vira crédito pra usar depois'), valor:null });
+    if(!ops.some(o => o.op === ui.pagto)) ui.pagto = ops[0].op;
+    box.innerHTML = `<div class="fluxo">${topo(s < 0 ? `Quanto ${nm} pagou da dívida?` : `Quanto ${nm} deixou de crédito?`)}
+      <div class="opcoes" role="radiogroup" aria-labelledby="fluxoTitulo">
+        ${ops.map(o => `<button class="opcao" role="radio" aria-checked="${ui.pagto === o.op}" data-pagto="${o.op}"><span><strong>${o.titulo}</strong><small>${o.sub}</small></span>${o.valor ? `<span class="v num">${brl(o.valor)}</span>` : ''}</button>`).join('')}
+      </div>
+      <div class="campo" id="pgOutro" style="max-width:260px" ${ui.pagto === 'outro' ? '' : 'hidden'}><label for="pgValor">Valor pago (R$)</label><input id="pgValor" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+      <p class="rotulo">Pagou com</p>
+      <div class="filtros formas" role="group" aria-label="Forma de pagamento">${FORMAS.map(f => `<button data-pforma="${f}" aria-pressed="${ui.forma === f}">${f}</button>`).join('')}</div>
+      <div id="pgCartao"></div>
+      <p class="erro" id="pgErro" role="alert"></p>
+      <div class="fechamento" id="pgFecha"></div>
+    </div>`;
+    atualizarPagto();
+    return;
+  }
+
+  if(ui.fluxo === 'credito'){
+    box.innerHTML = `<div class="fluxo">${topo(`Crédito pra ${nm}`)}
+      <p class="dica" style="margin:-12px 0 24px">Crédito que a pessoa ganha sem pagar, como prêmio ou troca de cartas.</p>
+      <div class="filtros" role="group" aria-label="Motivo" style="margin-bottom:16px">
+        ${['Prêmio da liga','Troca de cartas'].map(m => `<button data-motivo="${m}" aria-pressed="false">${m}</button>`).join('')}
+      </div>
+      <p class="dica" id="crValidade" style="margin:-4px 0 16px"></p>
+      <div class="avulso">
+        <div class="campo"><label for="crValor">Valor (R$)</label><input id="crValor" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+        <div class="campo cresce"><label for="crMotivo">Motivo</label><input id="crMotivo" autocomplete="off" placeholder="Ex: 1º lugar da liga de sábado"></div>
+      </div>
+      <p class="erro" id="crErro" role="alert"></p>
+      <div class="fechamento" id="crFecha"></div>
+    </div>`;
+    atualizarCredito();
+  }
+}
+function valorPagto(){
+  const c = cli(ui.sel), r = proximaParcela(c.id);
+  if(ui.pagto === 'parcela' && r) return r.x.valor;
+  if(ui.pagto === 'quitar' && r) return r.resta;
+  if(ui.pagto === 'divida') return Math.max(0, -saldo(c.id));
+  return parseValor($('#pgValor') ? $('#pgValor').value : '');
+}
+function atualizarCartaoPg(){
+  const box = $('#pgCartao'); if(!box) return;
+  const v = valorPagto();
+  if(ui.forma !== 'Cartão' || !v){ box.innerHTML = ''; return; }
+  ui.pcart = ui.pcart || {};
+  const ativo = document.activeElement && document.activeElement.id;
+  if(ativo === 'pVezes' || ativo === 'pCobrado'){ $('#pInfo').textContent = cartaoInfo(ui.pcart, v); return; }
+  if(!ui.pcart.editado) delete ui.pcart.cobrado;   // acompanha o valor enquanto ele não mexeu no total
+  box.innerHTML = cartaoHTML('p', ui.pcart, v);
+}
+function atualizarPagto(){
+  atualizarCartaoPg();
+  const f = $('#pgFecha'); if(!f) return;
+  const v = valorPagto(), c = cli(ui.sel);
+  f.innerHTML = v ? `<div><p class="tot num">+ ${brl(v)}</p><p class="depois">Depois do pagamento, ${esc(nomeCurto(c))} ${saldoFrase(saldo(c.id) + v)}.</p></div>
+    <button class="btn prim grande" data-acao="confirmar-pagamento">Confirmar pagamento</button>` : '';
+}
+function mostrarValidade(){
+  const el = $('#crValidade'); if(!el) return;
+  const c = cli(ui.sel);
+  el.textContent = !ui.crPremio ? '' : c.semValidade ? 'Prêmio sem validade pra este cliente.' : `Prêmio da liga vale ${VALIDADE_PREMIO} dias: pode ser usado até ${fmtData(addDias(hojeISO(), VALIDADE_PREMIO))}.`;
+}
+function atualizarCredito(){
+  const f = $('#crFecha'); if(!f) return;
+  const v = parseValor($('#crValor').value), c = cli(ui.sel);
+  f.innerHTML = v ? `<div><p class="tot num">+ ${brl(v)}</p><p class="depois">Depois disso, ${esc(nomeCurto(c))} ${saldoFrase(saldo(c.id) + v)}.</p></div>
+    <button class="btn prim grande" data-acao="confirmar-credito">Dar crédito</button>` : '';
+}
+
+/* ===== render: produtos ===== */
+function renderProdutos(){
+  const box = $('#listaProd');
+  const cats = categorias();
+  const valorDe = arr => arr.filter(p => p.estoque != null).reduce((a,p) => a + p.preco * Math.max(p.estoque,0), 0);
+  const cont = S.produtos.filter(p => p.estoque != null);
+  const et = $('#estoqueTotal');
+  if(cont.length){ et.hidden = false; et.innerHTML = `Valor em estoque <strong class="num">${brl(valorDe(S.produtos))}</strong>`; } else et.hidden = true;
+  if(!S.produtos.length){ box.innerHTML = '<p class="dica" style="margin-top:40px">Nenhum produto cadastrado.</p>'; return; }
+  box.innerHTML = cats.map((cat, gi) => {
+    const itens = S.produtos.filter(p => catDe(p) === cat).sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'));
+    const v = valorDe(itens);
+    return `<section class="grupo" aria-label="${esc(cat)}">
+      <div class="grupo-cab"><h3 class="secao">${esc(cat)}</h3>${itens.some(p => p.estoque != null) ? `<span>${brl(v)} em estoque</span>` : ''}</div>
+      <ul class="lista-prod">
+      ${gi ? '' : '<li class="cab" aria-hidden="true"><span>Produto</span><span class="preco">Preço</span><span>Na loja</span><span class="valor">Valor total</span><span></span></li>'}
+      ${itens.map(p => {
+        const temQtd = p.estoque != null;
+        return `<li><span>${esc(p.nome)}</span><span class="preco">${brl(p.preco)}</span>
+        <span class="estoque">${temQtd ? `<button data-estoque="${p.id}:-1" aria-label="Tirar uma unidade de ${esc(p.nome)}">−</button><output aria-label="Unidades de ${esc(p.nome)}">${p.estoque}</output><button data-estoque="${p.id}:1" aria-label="Somar uma unidade de ${esc(p.nome)}">+</button>` : '<span class="dica">Sem controle</span>'}</span>
+        <span class="valor">${temQtd ? brl(p.preco * Math.max(p.estoque,0)) : ''}</span>
+        <span><button class="btn-mini" data-editar-prod="${p.id}">Editar</button><button class="btn-mini" data-remover-prod="${p.id}">Remover</button></span></li>`; }).join('')}
+      </ul></section>`;
+  }).join('');
+}
+
+/* ===== render: painel ===== */
+function cobrancasHTML(){
+  const hoje = hojeISO();
+  const itens = [];
+  (S.planos || []).forEach(pl => {
+    if(pl.cancelado) return;
+    const c = cli(pl.cid); if(!c) return;
+    pl.parcelas.forEach((x,i) => { if(!x.pagaLanc && diasEntre(hoje, x.venc) <= 7) itens.push({ pl, x, i, c, st:statusParcela(x, hoje) }); });
+  });
+  itens.sort((a,b) => a.x.venc.localeCompare(b.x.venc));
+  return `<section class="cobrancas" aria-labelledby="hCob"><h3 class="secao" id="hCob">Cobranças</h3>
+    ${itens.length ? `<ul class="parcelas">${itens.map(({pl,x,i,c,st}) => `<li class="${st.tipo}">
+      <button class="nome" data-abrir="${c.id}">${esc(c.nome)}</button><span class="p-v">${brl(x.valor)}</span><span class="p-d">${fmtData(x.venc)}</span><span class="p-st">${i+1}ª de ${pl.parcelas.length}, ${st.txt}</span>
+      <span class="p-ac"><button class="btn-mini forte" data-cobrar="${pl.id}:${i}">Cobrar no WhatsApp</button></span></li>`).join('')}</ul>`
+    : '<p class="dica">Nenhuma parcela atrasada ou vencendo nos próximos 7 dias.</p>'}
+  </section>`;
+}
+function renderPainel(){
+  const saldos = S.clientes.map(c => ({ c, s: saldo(c.id) }));
+  const credito = saldos.filter(x => x.s > 0).sort((a,b) => b.s - a.s);
+  const devendo = saldos.filter(x => x.s < 0).sort((a,b) => a.s - b.s);
+  const noCredito = credito.reduce((a,x) => a + x.s, 0);
+  const receber = devendo.reduce((a,x) => a - x.s, 0);
+  const semana = S.lancs.filter(l => Date.now() - new Date(l.data) < 7 * 864e5 && valido(l));
+  // dinheiro que entrou: vendas pagas na hora + pagamentos (todo lançamento com forma de pagamento)
+  const dinheiro = semana.filter(l => l.forma && (l.tipo === 'venda' || l.tipo === 'credito'));
+  const daLoja = l => l.total - premioDe(l);   // na inscrição, só a parte da loja conta
+  const proPremio = dinheiro.reduce((a,l) => a + premioDe(l), 0);
+  const entrou = dinheiro.reduce((a,l) => a + daLoja(l), 0);
+  const porForma = FORMAS.map(f => [f, dinheiro.filter(l => l.forma === f).reduce((a,l) => a + daLoja(l), 0)]);
+  const dado = semana.filter(l => l.tipo === 'credito' && !l.forma);
+  const dadoPremio = dado.filter(l => l.premio).reduce((a,l) => a + l.total, 0);
+  const dadoOutro = dado.filter(l => !l.premio).reduce((a,l) => a + l.total, 0);
+  const hoje = hojeISO();
+  const vencendo = S.clientes.filter(c => !c.semValidade).map(c => ({ c, b: creditoDetalhe(c.id).ativos[0] })).filter(x => x.b && diasEntre(hoje, x.b.vence) <= 7).sort((x,y) => x.b.vence.localeCompare(y.b.vence));
+  const completos = S.clientes.filter(c => fidelidade(c.id).completo);
+  const rank = arr => arr.length ? `<ul class="rank">${arr.map(({c,s}) => `<li><button data-abrir="${c.id}"><span>${esc(c.nome)}</span><span class="v">${brl(Math.abs(s))}</span></button></li>`).join('')}</ul>` : '<p class="dica">Ninguém por enquanto.</p>';
+  const recentes = semana.slice().sort((a,b) => b.data.localeCompare(a.data)).slice(0,10);
+  $('#painel').innerHTML = `
+    <h2>Painel</h2>
+    <section class="entrou" aria-labelledby="hEntrou">
+      <p class="total-rot" id="hEntrou">Entrou na loja nos últimos 7 dias</p>
+      <p class="total-num">${brl(entrou)}</p>
+      <div class="formas-res">${porForma.map(([f,v]) => `<span>${f}<strong>${brl(v)}</strong></span>`).join('')}</div>
+      ${proPremio ? `<p class="dica" style="margin-top:14px">Fora isso, ${brl(proPremio)} de inscrições da liga foram pra premiação dos jogadores.</p>` : ''}
+    </section>
+    ${cobrancasHTML()}
+    ${vencendo.length ? `<section class="cobrancas" aria-labelledby="hVence"><h3 class="secao" id="hVence">Prêmio da liga vencendo</h3>
+      <ul class="parcelas">${vencendo.map(({c,b}) => { const d = diasEntre(hoje, b.vence); return `<li class="breve">
+        <button class="nome" data-abrir="${c.id}">${esc(c.nome)}</button><span class="p-v">${brl(b.valor)}</span><span class="p-d">${fmtData(b.vence)}</span><span class="p-st">${d === 0 ? 'vence hoje' : `vence em ${d} ${plural(d,'dia','dias')}`}</span>
+        <span class="p-ac"><button class="btn-mini forte" data-avisar-premio="${c.id}">Avisar no WhatsApp</button></span></li>`; }).join('')}</ul></section>` : ''}
+    ${completos.length ? `<section class="bloco"><h3 class="secao">Cartão fidelidade completo</h3><ul class="rank">${completos.map(c => `<li><button data-abrir="${c.id}"><span>${esc(c.nome)}</span><span class="v">dar benefício</span></button></li>`).join('')}</ul></section>` : ''}
+    <div class="totais menor">
+      <div><p class="total-rot">Crédito dos clientes na loja<small>Só pode ser gasto aqui dentro</small></p><p class="total-num roxo">${brl(noCredito)}</p></div>
+      <div><p class="total-rot">Fiado a receber<small>O que os clientes devem pra loja</small></p><p class="total-num">${brl(receber)}</p></div>
+    </div>
+    ${dadoPremio || dadoOutro ? `<p class="semana">Crédito dado nos últimos 7 dias: <strong>${brl(dadoPremio)}</strong> em prêmios da liga e <strong>${brl(dadoOutro)}</strong> em trocas e outros.</p>` : ''}
+    <div class="colunas">
+      <section><h3 class="secao">Quem tem crédito</h3>${rank(credito)}</section>
+      <section><h3 class="secao">Quem está devendo</h3>${rank(devendo)}</section>
+    </div>
+    <section class="bloco">
+      <h3 class="secao">Últimos lançamentos</h3>
+      ${recentes.length ? `<ul class="extrato">${recentes.map(l => { const c = cli(l.cid); return `<li class="ext-linha"><span class="ext-data">${dataHora(l.data)}</span><span class="ext-desc"><span>${esc(c ? c.nome : 'Cliente removido')}</span> <em>${esc(l.desc)}</em></span><span class="ext-valor ${l.tipo}">${valorTxt(l)}</span><span></span><span></span></li>`; }).join('')}</ul>` : '<p class="dica">Nenhum lançamento nos últimos 7 dias.</p>'}
+    </section>
+    <div class="acoes"><button class="btn prim" data-acao="pdf-relatorio" ${S.clientes.length ? '' : 'disabled'}>Relatório geral em PDF</button></div>`;
+}
+
+/* ===== liga em lote ===== */
+/* de cada inscrição, uma parte fica com a loja e o resto vai pro prêmio (padrão: tudo pro prêmio, fase atual da loja) */
+const parteLoja = () => (S.config && Number.isInteger(S.config.parteLoja)) ? S.config.parteLoja : 0;
+const premioDe = l => typeof l.paraPremio === 'number' ? l.paraPremio : (l.paraPremio ? l.total : 0);   // aceita registros antigos (true/false)
+function poteLiga(){ return inscritosHoje().reduce((a,l) => a + premioDe(l), 0); }
+function somaPremiosHTML(){
+  const pote = poteLiga(); if(!pote) return '';
+  const dados = premiosHoje().reduce((a,l) => a + l.total, 0);
+  const digitado = (ui.liga.premios || []).reduce((a,p) => a + (p.cid ? (parseValor(p.valor) || 0) : 0), 0);
+  const falta = pote - dados - digitado;
+  return `Prêmio da liga hoje: <strong>${brl(pote)}</strong>.${dados ? ` Já distribuído: ${brl(dados)}.` : ''}${digitado ? ` Nesta rodada: ${brl(digitado)}.` : ''} ${falta > 0 ? `Falta distribuir <strong>${brl(falta)}</strong>.` : falta < 0 ? `<strong>${brl(-falta)} acima</strong> do valor das inscrições.` : 'Tudo distribuído.'}`;
+}
+function produtoLiga(){ return S.produtos.find(p => norm(p.nome).includes('inscri') && norm(p.nome).includes('liga')); }
+function ligaHoje(){ const h = hojeISO(); return (S.ligas || []).find(l => l.data === h); }
+function inscritosHoje(){ const lg = ligaHoje(); return lg ? S.lancs.filter(l => l.ligaId === lg.id && l.compra && valido(l)) : []; }
+function premiosHoje(){ const lg = ligaHoje(); return lg ? S.lancs.filter(l => l.ligaId === lg.id && l.premio && valido(l)) : []; }
+function formasLiga(c, valor){ return ['Dinheiro','Pix','Cartão', ...(valor && saldo(c.id) >= valor ? ['Crédito'] : []), 'Fiado']; }
+function lgListaHTML(){
+  const L = ui.liga, valor = parseValor(L.valor);
+  const inscIds = new Set(inscritosHoje().map(l => l.cid));
+  const b = norm(L.busca);
+  const lista = S.clientes.filter(c => !inscIds.has(c.id) && (!b || norm(c.nome + ' ' + (c.apelido || '')).includes(b))).sort((x,y) => x.nome.localeCompare(y.nome,'pt-BR'));
+  if(!S.clientes.length) return '<li class="dica">Nenhum cliente cadastrado ainda. Use "Cadastrar jogador".</li>';
+  if(!lista.length) return `<li class="dica">${b ? `Ninguém encontrado pra “${esc(L.busca)}”.` : 'Todos os clientes já estão inscritos hoje.'}</li>`;
+  return lista.map(c => { const on = !!L.sel[c.id]; return `<li class="${on ? 'on' : ''}">
+    <button class="jog" data-jog="${c.id}" aria-pressed="${on}"><span class="marca-jog" aria-hidden="true"></span><span><strong>${esc(c.nome)}</strong>${c.apelido ? `<small>${esc(c.apelido)}</small>` : ''}</span></button>
+    ${on ? `<div class="filtros formas" role="group" aria-label="Como ${esc(nomeCurto(c))} pagou">${formasLiga(c, valor).map(f => `<button data-jforma="${c.id}:${f}" aria-pressed="${L.sel[c.id] === f}">${f}</button>`).join('')}</div>` : ''}
+  </li>`; }).join('');
+}
+function lgFechaHTML(){
+  const n = Object.keys(ui.liga.sel).length, valor = parseValor(ui.liga.valor);
+  if(!n) return '';
+  return `<div><p class="tot num">${valor ? brl(valor * n) : 'Falta o valor'}</p><p class="depois">${n} ${plural(n,'inscrição','inscrições')}${valor ? ` de ${brl(valor)}` : ''}</p></div>
+    <button class="btn prim grande" data-acao="confirmar-liga">Registrar ${n} ${plural(n,'inscrição','inscrições')}</button>`;
+}
+function divisaoTxt(){
+  const v = parseValor(ui.liga.valor) || 0, lj = parteLoja();
+  if(!v) return '';
+  if(lj > v) return `A parte da loja (${brl(lj)}) é maior que a inscrição. Ajuste antes de registrar.`;
+  if(!lj) return `Cada inscrição: tudo (${brl(v)}) vai pro prêmio dos jogadores. Nada entra no caixa da loja.`;
+  if(lj === v) return `Cada inscrição: tudo (${brl(v)}) fica com a loja. Sem prêmio em dinheiro das inscrições.`;
+  return `Cada inscrição: ${brl(lj)} pra loja e ${brl(v - lj)} pro prêmio dos jogadores.`;
+}
+function renderLiga(){
+  const L = ui.liga, prod = produtoLiga();
+  if(L.valor == null) L.valor = prod ? centsInput(prod.preco) : '';
+  if(!L.premios) L.premios = (S.ultimosPremios && S.ultimosPremios.length ? S.ultimosPremios : ['','','','']).map(v => ({ cid:'', valor:v }));
+  const insc = inscritosHoje(), prem = premiosHoje();
+  const nomeDe = id => { const c = cli(id); return c ? esc(c.nome) : 'Cliente removido'; };
+  $('#liga').innerHTML = `
+    <h2>Liga de hoje</h2>
+    <p class="intro">${fmtData(hojeISO())}. Marque quem jogou e registre todas as inscrições de uma vez. No fim, distribua os prêmios.</p>
+
+    ${insc.length ? `<section class="bloco"><div class="grupo-cab"><h3 class="secao">Inscritos hoje</h3><span>${insc.length} ${plural(insc.length,'jogador','jogadores')}</span></div>
+      <ul class="inscritos">${insc.map(l => `<li><button data-abrir="${l.cid}">${nomeDe(l.cid)}</button></li>`).join('')}</ul></section>` : ''}
+    <section class="bloco" aria-labelledby="hInsc">
+      <h3 class="secao" id="hInsc">${insc.length ? 'Chegou mais gente?' : 'Inscrições'}</h3>
+      <div class="liga-topo">
+        <div class="campo" style="max-width:220px"><label for="lgValor">Valor da inscrição (R$)</label><input id="lgValor" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${esc(L.valor)}"></div>
+        <div class="campo" style="max-width:220px"><label for="lgLoja">Parte da loja (R$)</label><input id="lgLoja" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${centsInput(parteLoja())}"></div>
+        <div><p class="rotulo" style="margin-top:0">Quem você marcar paga com</p><div class="filtros formas" role="group" aria-label="Forma de pagamento padrão">${['Dinheiro','Pix','Cartão'].map(f => `<button data-lpadrao="${f}" aria-pressed="${L.padrao === f}">${f}</button>`).join('')}</div></div>
+      </div>
+      <p class="dica" id="lgDivisao" style="margin-top:10px">${divisaoTxt()}</p>
+      ${prod ? '' : '<p class="dica" style="margin-top:4px">Cadastre "Inscrição da liga" em Produtos pra esse valor já vir preenchido.</p>'}
+      <div class="lista-cab-liga">
+        <div class="campo"><label for="lgBusca">Buscar jogador</label><input id="lgBusca" type="search" autocomplete="off" placeholder="Nome ou apelido" value="${esc(L.busca)}"></div>
+        <button class="btn" data-acao="novo-jogador">Cadastrar jogador</button>
+      </div>
+      <ul class="jogadores" id="lgLista">${lgListaHTML()}</ul>
+      <p class="erro" id="lgErro" role="alert"></p>
+      <div class="fechamento" id="lgFecha">${lgFechaHTML()}</div>
+    </section>
+    ${insc.length ? `<section class="bloco" aria-labelledby="hPrem">
+      <h3 class="secao" id="hPrem">Premiação</h3>
+      <p class="dica" style="margin-bottom:16px">O prêmio entra como crédito na conta de cada um e vale ${VALIDADE_PREMIO} dias.</p>
+      <p class="semana" id="prSoma" aria-live="polite">${somaPremiosHTML()}</p>
+      ${prem.length ? `<ul class="rank" style="margin-bottom:28px">${prem.map(l => `<li><button data-abrir="${l.cid}"><span>${nomeDe(l.cid)} <small class="dica">${esc(l.colocacao || '')}</small></span><span class="v">${brl(l.total)}</span></button></li>`).join('')}</ul>` : ''}
+      ${prem.length && !L.maisPremios ? `<button class="btn" data-acao="mais-premios">Dar mais um prêmio</button>` : `<div class="premios">${L.premios.map((p,i) => `<div class="premio-linha">
+        <span class="pos">${i+1}º</span>
+        <select id="pr${i}" data-prsel="${i}" aria-label="Jogador em ${i+1}º lugar"><option value="">Escolha o jogador</option>${insc.map(l => `<option value="${l.cid}" ${p.cid === l.cid ? 'selected' : ''}>${nomeDe(l.cid)}</option>`).join('')}</select>
+        <input id="prv${i}" data-prval="${i}" inputmode="decimal" autocomplete="off" placeholder="Crédito (R$)" aria-label="Prêmio do ${i+1}º lugar em reais" value="${esc(p.valor)}">
+      </div>`).join('')}</div>
+      <p class="erro" id="prErro" role="alert"></p>
+      <div class="acoes" style="margin-top:12px"><button class="btn fantasma" data-acao="add-premio">Mais uma colocação</button><button class="btn prim" data-acao="dar-premios">Dar prêmios</button></div>`}
+    </section>` : ''}`;
+}
+function confirmarLiga(){
+  const L = ui.liga, valor = parseValor(L.valor), ids = Object.keys(L.sel);
+  if(!ids.length) return;
+  if(!valor){ $('#lgErro').textContent = 'Digite o valor da inscrição.'; $('#lgValor').focus(); return; }
+  if(parteLoja() > valor){ $('#lgErro').textContent = 'A parte da loja não pode ser maior que a inscrição.'; $('#lgLoja').focus(); return; }
+  if(!travaClique('confirmarLiga')) return;
+  let lg = ligaHoje();
+  if(!lg){ lg = { id:uid(), data:hojeISO() }; S.ligas = [...(S.ligas || []), lg]; }
+  const prod = produtoLiga(), agora = new Date().toISOString();
+  const antes = new Set(S.clientes.filter(c => fidelidade(c.id).completo).map(c => c.id));
+  ids.forEach(cid => {
+    const f = L.sel[cid];
+    const base = { id:uid(), cid, compra:true, ligaId:lg.id, paraPremio: valor - parteLoja(), parteLoja: parteLoja(), total:valor, itens:[{ pid: prod ? prod.id : null, nome:'Inscrição da liga', preco:valor, qtd:1 }], data:agora };
+    if(f === 'Crédito') S.lancs.push({ ...base, tipo:'debito', desc:'Inscrição da liga (usou crédito)' });
+    else if(f === 'Fiado') S.lancs.push({ ...base, tipo:'debito', desc:'Inscrição da liga (fiado)' });
+    else S.lancs.push({ ...base, tipo:'venda', forma:f, desc:`Inscrição da liga (pago no ${f.toLowerCase()})` });
+  });
+  L.sel = {}; L.busca = '';
+  save(); renderLiga(); renderLista();
+  const novos = S.clientes.filter(c => !antes.has(c.id) && fidelidade(c.id).completo).map(c => nomeCurto(c));
+  toast(`${ids.length} ${plural(ids.length,'inscrição registrada','inscrições registradas')}.${novos.length ? ` ${novos.join(', ')} ${plural(novos.length,'completou','completaram')} o cartão fidelidade!` : ''}`);
+}
+function darPremios(){
+  const L = ui.liga, err = $('#prErro');
+  const linhas = L.premios.map((p,i) => ({ i, cid:p.cid, valor:parseValor(p.valor), bruto:String(p.valor || '').trim() }));
+  const cheias = linhas.filter(x => x.cid && x.valor);
+  const meia = linhas.find(x => (x.cid && !x.valor) || (!x.cid && x.bruto && x.valor === null));
+  if(meia){ err.textContent = meia.cid ? `Falta o valor do ${meia.i+1}º lugar.` : `O valor do ${meia.i+1}º lugar não é válido.`; return; }
+  if(!cheias.length){ err.textContent = 'Escolha o jogador de pelo menos uma colocação.'; return; }
+  const repetido = cheias.find((x,k) => cheias.findIndex(y => y.cid === x.cid) !== k);
+  if(repetido){ err.textContent = `${cli(repetido.cid).nome} aparece em mais de uma colocação.`; return; }
+  if(!travaClique('darPremios')) return;
+  const lg = ligaHoje(), vence = addDias(hojeISO(), VALIDADE_PREMIO), agora = new Date().toISOString();
+  cheias.forEach(x => {
+    const c = cli(x.cid);
+    S.lancs.push({ id:uid(), cid:x.cid, tipo:'credito', premio:true, vence, ligaId: lg ? lg.id : null, colocacao:`${x.i+1}º lugar`, total:x.valor, itens:[],
+      desc:`Prêmio da liga, ${x.i+1}º lugar${c && c.semValidade ? '' : ` (vale até ${fmtData(vence)})`}`, data:agora });
+  });
+  S.ultimosPremios = L.premios.map(p => p.valor);
+  L.premios = null; L.maisPremios = false;
+  save(); renderLiga(); renderLista();
+  toast(`${cheias.length} ${plural(cheias.length,'prêmio dado','prêmios dados')} em crédito.`);
+}
+
+/* ===== render: backup ===== */
+function renderBackup(){
+  const d = S.ultimoBackup;
+  const vazioTudo = !S.clientes.length && !S.lancs.length && !S.produtos.length;
+  $('#backup').innerHTML = `
+    <h2>Backup</h2>
+    <p class="intro">Os dados ficam guardados só neste navegador, neste aparelho. Se o navegador for limpo ou o aparelho der problema, tudo some. Baixe um backup com frequência e guarde o arquivo no Google Drive ou no WhatsApp.</p>
+    <section class="bloco">
+      <h3 class="secao">Baixar backup</h3>
+      <p>${d ? `Último backup em ${dataHora(d)}.` : 'Nenhum backup feito ainda.'} Hoje tem ${S.clientes.length} ${S.clientes.length === 1 ? 'cliente' : 'clientes'}, ${S.produtos.length} ${S.produtos.length === 1 ? 'produto' : 'produtos'} e ${S.lancs.length} ${S.lancs.length === 1 ? 'lançamento' : 'lançamentos'}.</p>
+      <button class="btn prim" data-acao="exportar">Baixar backup</button>
+    </section>
+    <section class="bloco">
+      <h3 class="secao">Restaurar backup</h3>
+      <p>Use pra passar os dados pra outro aparelho ou recuperar depois de um problema. Os dados atuais são substituídos pelos do arquivo.</p>
+      <button class="btn" data-acao="importar">Escolher arquivo de backup</button>
+    </section>
+    ${vazioTudo ? `<section class="bloco"><h3 class="secao">Testar com exemplo</h3><p>Carrega clientes e produtos fictícios pra ver o sistema funcionando. Apague antes de começar a usar de verdade.</p><button class="btn" data-acao="exemplo">Carregar dados de exemplo</button></section>` : `
+    <section class="bloco">
+      <h3 class="secao">Apagar tudo</h3>
+      <p>Remove todos os clientes, produtos e lançamentos deste navegador. Use pra limpar os dados de exemplo. Baixe um backup antes se tiver dados reais.</p>
+      <button class="btn perigo" data-acao="apagar-tudo">Apagar todos os dados</button>
+    </section>`}
+    <section class="bloco">
+      <h3 class="secao">Suporte</h3>
+      <p class="assinatura">Sistema feito por Anderson Aelio, Phosphoros Studio. Deu algum problema ou quer uma mudança? Chama no WhatsApp.</p>
+      <a class="btn" href="https://wa.me/5548992088994" target="_blank" rel="noopener">Falar com o Anderson</a>
+    </section>`;
+}
+
+function render(){
+  processarVencimentos();
+  renderLista();
+  renderFicha();
+  if(ui.view === 'produtos') renderProdutos();
+  if(ui.view === 'painel') renderPainel();
+  if(ui.view === 'liga') renderLiga();
+  if(ui.view === 'backup') renderBackup();
+}
+
+/* ===== ações ===== */
+function irPara(v){
+  ui.view = v;
+  document.querySelectorAll('[data-view]').forEach(b => b.dataset.view === v ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
+  render();
+  window.scrollTo(0,0);
+}
+function abrirCliente(id){
+  ui.sel = id; ui.carrinho = []; ui.fluxo = null;
+  document.body.classList.add('ficha-aberta');
+  if(ui.view !== 'clientes') irPara('clientes'); else render();
+  window.scrollTo(0,0);
+  const h = $('#fichaNome'); if(h) h.focus({ preventScroll:true });
+}
+function formCliente(id, opts = {}){
+  const c = id ? cli(id) : { nome:'', apelido:'', whats:'' };
+  abrirDialogo({
+    titulo: id ? 'Editar cliente' : 'Novo cliente',
+    confirmar: id ? 'Salvar alterações' : 'Cadastrar cliente',
+    corpo: `<div class="campo"><label for="fNome">Nome (obrigatório)</label><input id="fNome" autocomplete="off" value="${esc(c.nome)}"></div>
+      <div class="campo"><label for="fApelido">Apelido ou nick</label><input id="fApelido" autocomplete="off" value="${esc(c.apelido)}"></div>
+      <div class="campo"><label for="fWhats">WhatsApp com DDD</label><input id="fWhats" type="tel" inputmode="tel" autocomplete="off" placeholder="48 99999-9999" value="${esc(c.whats)}"></div>
+      ${id ? `<label class="check"><input type="checkbox" id="fSemVal" ${c.semValidade ? 'checked' : ''}> Prêmio da liga não vence pra este cliente</label>` : ''}`,
+    aoConfirmar(){
+      const nome = $('#fNome').value.trim(), apelido = $('#fApelido').value.trim(), whats = $('#fWhats').value.trim();
+      if(!nome) return 'Digite o nome do cliente.';
+      const dig = whats.replace(/\D/g,'');
+      if(whats && (dig.length < 10 || dig.length > 13)) return 'Confira o WhatsApp: coloque o DDD e o número, por exemplo 48 99999-9999.';
+      if(S.clientes.some(x => x.id !== id && norm(x.nome) === norm(nome))) return 'Já existe um cliente com esse nome. Acrescente o sobrenome pra diferenciar.';
+      if(id){ Object.assign(c, { nome, apelido, whats, semValidade: !!($('#fSemVal') && $('#fSemVal').checked) }); save(); render(); toast('Cliente atualizado.'); }
+      else {
+        const n = { id: uid(), nome, apelido, whats, criado: new Date().toISOString() };
+        S.clientes.push(n); save(); toast('Cliente cadastrado.');
+        if(opts.naLiga){ ui.liga.sel[n.id] = ui.liga.padrao; renderLiga(); renderLista(); } else abrirCliente(n.id);
+      }
+    }
+  });
+}
+function removerCliente(){
+  const c = cli(ui.sel); if(!c || lancsDe(c.id).length) return;
+  abrirDialogo({ titulo:'Remover cliente', confirmar:'Remover', perigo:true,
+    corpo:`<p>Remover <strong>${esc(c.nome)}</strong> da lista? Só dá pra remover quem não tem nenhum lançamento.</p>`,
+    aoConfirmar(){ S.clientes = S.clientes.filter(x => x.id !== c.id); ui.sel = null; document.body.classList.remove('ficha-aberta'); save(); render(); toast('Cliente removido.'); } });
+}
+function iniciarFluxo(tipo){
+  const c = cli(ui.sel); if(!c) return;
+  ui.fluxo = tipo; ui.carrinho = []; ui.pagto = null; ui.pc = {}; ui.forma = null; ui.pcart = {}; ui.crPremio = false; confirmando = false;
+  renderFicha();
+  window.scrollTo(0,0);
+  const h = $('#fluxoTitulo'); if(h) h.focus({ preventScroll:true });
+}
+function sairFluxo(){ ui.fluxo = null; ui.carrinho = []; renderFicha(); window.scrollTo(0,0); const h = $('#fichaNome'); if(h) h.focus({ preventScroll:true }); }
+function addProdutoCarrinho(pid){
+  const p = S.produtos.find(x => x.id === pid); if(!p) return;
+  const it = ui.carrinho.find(i => i.pid === pid);
+  if(!cabeNoEstoque(p, (it ? it.qtd : 0) + 1)) return;
+  if(it) it.qtd++; else ui.carrinho.push({ pid, nome:p.nome, preco:p.preco, qtd:1 });
+  atualizarLancar();
+}
+function cabeNoEstoque(p, qtd){
+  if(p.estoque == null || qtd <= p.estoque) return true;
+  toast(p.estoque > 0 ? `Só tem ${p.estoque} de ${p.nome} na loja. Se chegou mais, ajuste em Produtos.` : `${p.nome} está esgotado. Se chegou mais, ajuste em Produtos.`);
+  return false;
+}
+function addAvulso(){
+  const v = parseValor($('#avValor').value), m = $('#avMotivo').value.trim();
+  const err = $('#avErro');
+  if(!v){ err.textContent = 'Digite um valor maior que zero, por exemplo 25 ou 25,50.'; $('#avValor').focus(); return; }
+  if(!m){ err.textContent = 'Escreva o que foi, pra ficar claro no extrato.'; $('#avMotivo').focus(); return; }
+  err.textContent = '';
+  ui.carrinho.push({ pid:null, nome:m, preco:v, qtd:1 });
+  $('#avValor').value = ''; $('#avMotivo').value = '';
+  atualizarLancar();
+}
+function confirmarCompra(){
+  if(!ui.carrinho.length) return;
+  const { c, total, resto, pronto, pc } = contaCompra();
+  if(!c || !pronto) return;
+  const baseCartao = pc.modo === 'hora' ? total : resto;
+  const usaCartao = (pc.modo === 'hora' && pc.forma === 'Cartão') || (pc.modo === 'credito' && resto > 0 && pc.resto === 'Cartão');
+  const cart = usaCartao ? lerCartao(pc, baseCartao) : null;
+  if(cart && cart.erro){ $('#cErro').textContent = cart.erro; return; }
+  if(!travaClique('confirmarCompra')) return;
+  const itens = ui.carrinho.map(i => ({ pid:i.pid, nome:i.nome, preco:i.preco, qtd:i.qtd }));
+  itens.forEach(i => { const p = i.pid && S.produtos.find(x => x.id === i.pid); if(p && p.estoque != null) p.estoque = Math.max(0, p.estoque - i.qtd); });
+  const desc = itens.map(i => (i.qtd > 1 ? i.qtd + '× ' : '') + i.nome).join(', ');
+  const agora = new Date().toISOString();
+  const antes = fidelidade(c.id).completo;
+  if(pc.modo === 'hora'){
+    S.lancs.push({ id:uid(), cid:c.id, tipo:'venda', compra:true, forma:pc.forma, ...(cart || {}), total, itens, desc:`${desc} (pago no ${formaTxt(pc.forma, cart, total)})`, data:agora });
+  } else {
+    S.lancs.push({ id:uid(), cid:c.id, tipo:'debito', compra:true, total, itens, desc: pc.modo === 'credito' ? `${desc} (usou crédito)` : `${desc} (fiado)`, data:agora });
+    if(pc.modo === 'credito' && resto > 0 && pc.resto !== 'devendo')
+      S.lancs.push({ id:uid(), cid:c.id, tipo:'credito', forma:pc.resto, ...(cart || {}), total:resto, itens:[], desc:`Diferença paga no ${formaTxt(pc.resto, cart, resto)}`, data:agora });
+  }
+  save(); sairFluxo(); renderLista();
+  toast(!antes && fidelidade(c.id).completo ? `Compra registrada. ${c.nome} completou o cartão fidelidade!` : `Compra de ${brl(total)} registrada pra ${c.nome}.`);
+  if(pc.modo === 'fiado' && pc.parc === 'parcelado') formPlano(total);
+}
+function confirmarPagamento(){
+  const c = cli(ui.sel); if(!c) return;
+  const v = valorPagto();
+  if(!v){ $('#pgErro').textContent = 'Digite o valor pago, por exemplo 50 ou 50,00.'; const i = $('#pgValor'); if(i) i.focus(); return; }
+  if(!ui.forma){ $('#pgErro').textContent = 'Escolha como pagou: dinheiro, pix ou cartão.'; return; }
+  const cart = ui.forma === 'Cartão' ? lerCartao(ui.pcart || {}, v) : null;
+  if(cart && cart.erro){ $('#pgErro').textContent = cart.erro; return; }
+  if(!travaClique('confirmarPagamento')) return;
+  const r = proximaParcela(c.id);
+  const l = { id:uid(), cid:c.id, tipo:'credito', total:v, itens:[], data:new Date().toISOString() };
+  if(ui.pagto === 'parcela' && r){
+    l.desc = `Pagamento da ${r.i+1}ª parcela de ${r.pl.parcelas.length}`; l.plano = r.pl.id; r.x.pagaLanc = l.id;
+  } else if(ui.pagto === 'quitar' && r){
+    l.desc = 'Pagamento das parcelas restantes'; l.plano = r.pl.id; r.pl.parcelas.forEach(x => { if(!x.pagaLanc) x.pagaLanc = l.id; });
+  } else if(ui.pagto === 'divida'){ l.desc = 'Pagamento da dívida'; }
+  else l.desc = 'Pagamento';
+  l.forma = ui.forma; if(cart){ l.vezes = cart.vezes; l.cobrado = cart.cobrado; } l.desc += ` (${formaTxt(ui.forma, cart, v)})`;
+  S.lancs.push(l);
+  save(); sairFluxo(); renderLista();
+  toast(r && ui.pagto !== 'outro' && r.pl.parcelas.every(x => x.pagaLanc) ? `Pagamento registrado. Parcelamento de ${c.nome} quitado.` : `Pagamento de ${brl(v)} registrado pra ${c.nome}.`);
+}
+function confirmarCredito(){
+  const c = cli(ui.sel); if(!c) return;
+  const v = parseValor($('#crValor').value), m = $('#crMotivo').value.trim();
+  if(!v){ $('#crErro').textContent = 'Digite o valor do crédito.'; $('#crValor').focus(); return; }
+  if(!m){ $('#crErro').textContent = 'Escreva o motivo, pra ficar claro no extrato.'; $('#crMotivo').focus(); return; }
+  if(!travaClique('confirmarCredito')) return;
+  const l = { id:uid(), cid:c.id, tipo:'credito', total:v, itens:[], desc:m, data:new Date().toISOString() };
+  if(ui.crPremio){ l.premio = true; l.vence = addDias(hojeISO(), VALIDADE_PREMIO); if(!c.semValidade) l.desc += ` (vale até ${fmtData(l.vence)})`; }
+  S.lancs.push(l);
+  save(); sairFluxo(); renderLista();
+  toast(`${brl(v)} de crédito pra ${c.nome}.`);
+}
+function darBeneficio(){
+  const c = cli(ui.sel); if(!c || !fidelidade(c.id).completo) return;
+  abrirDialogo({ titulo:`Benefício pra ${nomeCurto(c)}`, confirmar:'Registrar benefício',
+    corpo:`<p>${esc(c.nome)} completou ${META_FIEL} compras. O que você vai dar?</p>
+      <div class="campo"><label for="bfTexto">Benefício</label><input id="bfTexto" autocomplete="off" placeholder="Ex: inscrição da liga grátis"></div>
+      <p class="dica">Fica registrado no extrato e o cartão recomeça. Se o benefício for crédito na conta, use Dar crédito em Mais opções.</p>`,
+    aoConfirmar(){
+      const b = $('#bfTexto').value.trim();
+      if(!b) return 'Escreva qual foi o benefício, pra ficar registrado.';
+      S.lancs.push({ id:uid(), cid:c.id, tipo:'beneficio', total:0, itens:[], desc:`Benefício do cartão fidelidade: ${b}`, data:new Date().toISOString() });
+      save(); render(); toast(`Benefício registrado. O cartão de ${c.nome} recomeçou.`);
+    } });
+}
+function menuMais(){
+  const c = cli(ui.sel); if(!c) return;
+  const s = saldo(c.id), pl = planoAtivo(c.id);
+  abrirMenu('Mais opções', [
+    ['dar-credito','Dar crédito','Prêmio da liga, troca de cartas'],
+    s >= 0 ? ['adiantou','Deixou dinheiro adiantado','Vira crédito pra usar em compras depois'] : null,
+    s < 0 && !pl ? ['parcelar','Parcelar a dívida',`Dividir ${brl(-s)} em parcelas com vencimento`] : null,
+    ['whats','Mandar extrato no WhatsApp',''],
+    ['pdf-extrato','Extrato em PDF',''],
+    ['editar','Editar cadastro','Nome, apelido, WhatsApp'],
+    pl ? ['cancelar-plano','Cancelar parcelamento','Pra renegociar a dívida'] : null,
+    !lancsDe(c.id).length ? ['remover-cliente','Remover cliente',''] : null,
+  ].filter(Boolean));
+}
+function estornar(lid){
+  const l = S.lancs.find(x => x.id === lid);
+  if(!l || l.estornoDe || estornado(lid)) return;
+  abrirDialogo({ titulo:'Desfazer lançamento', confirmar:'Desfazer', perigo:true,
+    corpo:`<p>Desfazer o lançamento de ${dataHora(l.data)}: <strong>${esc(l.desc)}</strong> (${valorTxt(l)})?</p>
+      <p class="dica">O lançamento continua no extrato, marcado como estornado, ${l.tipo === 'beneficio' ? 'e a bolinha volta pro cartão fidelidade. ' : l.tipo === 'venda' ? '' : 'e o valor volta pro saldo. '}Nada é apagado.${l.compra ? ' A bolinha dessa compra sai do cartão fidelidade.' : ''}${l.plano ? ' A parcela volta a ficar em aberto.' : ''}${l.tipo !== 'credito' && (l.itens || []).some(i => i.pid) ? ' Os produtos voltam pro estoque.' : ''}</p>`,
+    aoConfirmar(){
+      if(l.plano){ const pl = (S.planos || []).find(p => p.id === l.plano); if(pl) pl.parcelas.forEach(x => { if(x.pagaLanc === l.id) x.pagaLanc = null; }); }
+      if(l.tipo !== 'credito') (l.itens || []).forEach(i => { const p = i.pid && S.produtos.find(x => x.id === i.pid); if(p && p.estoque != null) p.estoque += i.qtd; });
+      S.lancs.push({ id:uid(), cid:l.cid, tipo: l.tipo === 'venda' || l.tipo === 'beneficio' ? l.tipo : l.tipo === 'credito' ? 'debito' : 'credito', total:l.total, itens:[], desc:'Estorno: ' + l.desc, estornoDe:l.id, data:new Date().toISOString() });
+      save(); render(); toast('Lançamento desfeito.');
+    } });
+}
+
+/* parcelamento */
+function formPlano(valorSugerido){
+  const c = cli(ui.sel); if(!c) return;
+  const s = saldo(c.id); if(s >= 0) return;
+  if(planoAtivo(c.id)){ toast(`${c.nome} já tem um parcelamento. Pra refazer, cancele o atual em Mais opções.`); return; }
+  const sugerido = Math.min(valorSugerido || -s, -s);
+  abrirDialogo({ titulo:`Parcelar dívida de ${nomeCurto(c)}`, confirmar:'Criar parcelamento',
+    corpo:`<div class="campo"><label for="plValor">Valor a parcelar (R$)</label><input id="plValor" inputmode="decimal" autocomplete="off" value="${centsInput(sugerido)}"></div>
+      <div class="dois">
+        <div class="campo"><label for="plN">Parcelas</label><input id="plN" inputmode="numeric" autocomplete="off" value="2"></div>
+        <div class="campo"><label for="pl1">1º vencimento</label><input id="pl1" type="date" value="${addMeses(hojeISO(),1)}"></div>
+      </div>
+      <p class="dica">As próximas vencem no mesmo dia dos meses seguintes. Dá pra mudar a data e o valor de cada uma.</p>
+      <ul class="pl-prev" id="plPrev" aria-label="Parcelas"></ul>`,
+    aoConfirmar(){
+      const total = parseValor($('#plValor').value), n = Number($('#plN').value);
+      if(!total) return 'Digite o valor a parcelar, por exemplo 250.';
+      if(!Number.isInteger(n) || n < 1 || n > 24) return 'Escolha de 1 a 24 parcelas.';
+      const parcelas = [];
+      for(let i = 0; i < n; i++){
+        const v = parseValor($('#plv' + i)?.value), d = $('#pld' + i)?.value;
+        if(!v) return `Confira o valor da ${i+1}ª parcela.`;
+        if(!d) return `Escolha a data da ${i+1}ª parcela.`;
+        parcelas.push({ valor:v, venc:d, pagaLanc:null });
+      }
+      const soma = parcelas.reduce((a,x) => a + x.valor, 0);
+      if(soma !== total) return `As parcelas somam ${brl(soma)}, mas o total é ${brl(total)}. Ajuste os valores.`;
+      parcelas.sort((a,b) => a.venc.localeCompare(b.venc));
+      S.planos.push({ id:uid(), cid:c.id, total, criado:new Date().toISOString(), cancelado:false, parcelas });
+      save(); render(); toast(`Parcelamento criado: ${brl(total)} em ${n}x.`);
+    } });
+  const gerar = () => {
+    const total = parseValor($('#plValor').value), n = Number($('#plN').value), d1 = $('#pl1').value;
+    const ul = $('#plPrev');
+    if(!total || !Number.isInteger(n) || n < 1 || n > 24 || !d1){ ul.innerHTML = ''; return; }
+    const base = Math.floor(total / n), resto = total - base * n;
+    ul.innerHTML = Array.from({ length:n }, (_, i) => `<li><span>${i+1}ª</span>
+      <input id="plv${i}" inputmode="decimal" autocomplete="off" aria-label="Valor da ${i+1}ª parcela" value="${centsInput(base + (i === 0 ? resto : 0))}">
+      <input id="pld${i}" type="date" aria-label="Vencimento da ${i+1}ª parcela" value="${addMeses(d1, i)}"></li>`).join('');
+  };
+  ['plValor','plN','pl1'].forEach(id => $('#' + id).addEventListener('input', gerar));
+  gerar();
+}
+function achaParcela(ref){ const [pid, i] = ref.split(':'); const pl = (S.planos || []).find(p => p.id === pid); return pl ? { pl, i:Number(i), x:pl.parcelas[Number(i)] } : null; }
+function cobrarParcela(ref){
+  const r = achaParcela(ref); if(!r || !r.x) return;
+  const { pl, i, x } = r, c = cli(pl.cid);
+  const num = waNumero(c.whats);
+  if(!num){ toast(`Cadastre o WhatsApp de ${c.nome} pra cobrar.`); ui.sel = c.id; formCliente(c.id); return; }
+  const d = diasEntre(hojeISO(), x.venc);
+  const quando = d < 0 ? `que venceu em ${fmtData(x.venc)}` : d === 0 ? 'que vence hoje' : `que vence em ${fmtData(x.venc)}`;
+  const msg = `Oi ${nomeCurto(c)}! Passando pra lembrar da ${i+1}ª parcela de ${pl.parcelas.length} do seu parcelamento na Arena Prime, no valor de ${brl(x.valor)}, ${quando}.`;
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+function avisarPremio(cid){
+  const c = cli(cid); if(!c) return;
+  const num = waNumero(c.whats);
+  if(!num){ toast(`Cadastre o WhatsApp de ${c.nome} pra avisar.`); ui.sel = c.id; formCliente(c.id); return; }
+  const b = creditoDetalhe(c.id).ativos[0]; if(!b) return;
+  const msg = `Oi ${nomeCurto(c)}! Passando pra lembrar que você tem ${brl(b.valor)} de crédito do prêmio da liga na Arena Prime, que vale até ${fmtData(b.vence)}.`;
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+function cancelarPlano(pid){
+  const pl = (S.planos || []).find(p => p.id === pid); if(!pl) return;
+  abrirDialogo({ titulo:'Cancelar parcelamento', confirmar:'Cancelar parcelamento', perigo:true,
+    corpo:`<p>As parcelas em aberto deixam de aparecer. As que já foram pagas continuam no extrato, e a dívida continua na conta.</p><p class="dica">Use quando for renegociar. Depois dá pra criar um parcelamento novo.</p>`,
+    aoConfirmar(){ pl.cancelado = true; save(); render(); toast('Parcelamento cancelado.'); } });
+}
+
+/* produtos */
+function parseQtd(str){ const t = String(str || '').trim(); if(!t) return null; if(!/^\d+$/.test(t)) return NaN; return Number(t); }
+function formProduto(id){
+  const novo = !id;
+  const p = novo ? { nome:'', preco:0, categoria: ui.ultimaCatProd || '', estoque:null } : S.produtos.find(x => x.id === id);
+  if(!p) return;
+  $('#catList').innerHTML = categorias().filter(c => c !== SEM_CAT).map(c => `<option value="${esc(c)}">`).join('');
+  abrirDialogo({ titulo: novo ? 'Cadastrar produto' : 'Editar produto', confirmar: novo ? 'Cadastrar produto' : 'Salvar alterações',
+    corpo:`<div class="campo"><label for="ePNome">Nome do produto</label><input id="ePNome" autocomplete="off" value="${esc(p.nome)}" placeholder="Ex: Box OP17"></div>
+      <div class="dois">
+        <div class="campo"><label for="ePPreco">Preço (R$)</label><input id="ePPreco" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${p.preco ? centsInput(p.preco) : ''}"></div>
+        <div class="campo"><label for="ePQtd">Quantidade na loja</label><input id="ePQtd" inputmode="numeric" autocomplete="off" placeholder="Opcional" value="${p.estoque ?? ''}"></div>
+      </div>
+      <div class="campo"><label for="ePCat">Categoria</label><input id="ePCat" list="catList" autocomplete="off" placeholder="Ex: One Piece, Pokémon, Acessórios" value="${esc(p.categoria || '')}"></div>
+      ${novo ? '' : '<p class="dica">Compras antigas continuam com o preço da época.</p>'}`,
+    aoConfirmar(){
+      const nome = $('#ePNome').value.trim(), preco = parseValor($('#ePPreco').value), estoque = parseQtd($('#ePQtd').value), categoria = $('#ePCat').value.trim();
+      if(!nome) return 'Digite o nome do produto.';
+      if(!preco) return 'Digite o preço, por exemplo 25 ou 25,50.';
+      if(Number.isNaN(estoque)) return 'Na quantidade, use só números inteiros, por exemplo 4. Ou deixe vazio.';
+      if(S.produtos.some(x => x.id !== id && norm(x.nome) === norm(nome))) return 'Já existe um produto com esse nome. Pra somar unidades, use o + na lista.';
+      ui.ultimaCatProd = categoria;
+      if(novo) S.produtos.push({ id:uid(), nome, preco, estoque, categoria });
+      else Object.assign(p, { nome, preco, estoque, categoria });
+      save(); renderProdutos(); toast(novo ? 'Produto cadastrado.' : 'Produto atualizado.');
+    } });
+}
+function removerProduto(id){
+  const p = S.produtos.find(x => x.id === id); if(!p) return;
+  abrirDialogo({ titulo:'Remover produto', confirmar:'Remover', perigo:true,
+    corpo:`<p>Remover <strong>${esc(p.nome)}</strong>? Os lançamentos antigos com esse produto continuam no extrato.</p>`,
+    aoConfirmar(){ S.produtos = S.produtos.filter(x => x.id !== id); ui.carrinho = ui.carrinho.filter(i => i.pid !== id); save(); renderProdutos(); toast('Produto removido.'); } });
+}
+
+/* ===== PDF (impressão do navegador) ===== */
+function imprimir(html, titulo){
+  const pa = $('#print');
+  pa.innerHTML = html;
+  const t = document.title;
+  document.title = titulo;
+  const fim = () => { document.title = t; pa.innerHTML = ''; window.removeEventListener('afterprint', fim); };
+  window.addEventListener('afterprint', fim);
+  window.print();
+}
+const hojeArquivo = () => new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+function pdfExtrato(){
+  const c = cli(ui.sel); if(!c) return;
+  const s = saldo(c.id);
+  const rows = linhasExtrato(c.id).reverse();
+  imprimir(`
+    <div class="p-cab"><span class="p-marca">ARENA PRIME</span><span>Extrato de crédito da loja</span></div>
+    <h1>${esc(c.nome)}</h1>${c.apelido ? `<p class="p-sub">${esc(c.apelido)}</p>` : ''}
+    <p class="p-saldo">${s > 0 ? 'Crédito disponível' : s < 0 ? 'Valor em aberto' : 'Saldo'}: <strong>${brl(Math.abs(s))}</strong></p>
+    <p class="p-emit">Emitido em ${dataHora(new Date().toISOString())}</p>
+    ${(() => { const pl = planoAtivo(c.id); if(!pl) return ''; return `<h2>Parcelamento de ${brl(pl.total)} em ${pl.parcelas.length}x</h2>
+      <table><thead><tr><th>Parcela</th><th>Vencimento</th><th class="n">Valor</th><th>Situação</th></tr></thead><tbody>${pl.parcelas.map((x,i) => `<tr><td>${i+1}ª</td><td>${fmtData(x.venc)}</td><td class="n">${brl(x.valor)}</td><td>${statusParcela(x).txt}</td></tr>`).join('')}</tbody></table>
+      <h2>Movimentações</h2>`; })()}
+    <table><thead><tr><th>Data</th><th>Descrição</th><th class="n">Entrada</th><th class="n">Saída</th><th class="n">Saldo</th></tr></thead>
+    <tbody>${rows.length ? rows.map(l => `<tr><td>${dataHora(l.data)}</td><td>${esc(l.desc)}${estornado(l.id) ? ' (estornado)' : ''}</td><td class="n">${l.tipo === 'credito' ? brl(l.total) : ''}</td><td class="n">${l.tipo === 'debito' ? brl(l.total) : l.tipo === 'venda' ? `(${brl(l.total)} pago na hora)` : ''}</td><td class="n">${fmtSaldo(l.saldoApos)}</td></tr>`).join('') : '<tr><td colspan="5">Nenhum lançamento.</td></tr>'}</tbody></table>`,
+    `Extrato ${c.nome} ${hojeArquivo()}`);
+}
+function pdfRelatorio(){
+  const saldos = S.clientes.map(c => ({ c, s: saldo(c.id) })).sort((a,b) => b.s - a.s);
+  const deveLoja = saldos.filter(x => x.s > 0).reduce((a,x) => a + x.s, 0);
+  const receber = saldos.filter(x => x.s < 0).reduce((a,x) => a - x.s, 0);
+  imprimir(`
+    <div class="p-cab"><span class="p-marca">ARENA PRIME</span><span>Relatório de crédito da loja</span></div>
+    <p class="p-emit">Emitido em ${dataHora(new Date().toISOString())}</p>
+    <div class="p-totais"><div>Crédito dos clientes na loja<strong>${brl(deveLoja)}</strong></div><div>Fiado a receber<strong>${brl(receber)}</strong></div>${S.produtos.some(p => p.estoque != null) ? `<div>Valor em estoque<strong>${brl(S.produtos.filter(p => p.estoque != null).reduce((a,p) => a + p.preco * Math.max(p.estoque,0), 0))}</strong></div>` : ''}</div>
+    <table><thead><tr><th>Cliente</th><th>Apelido</th><th>WhatsApp</th><th class="n">Crédito</th><th class="n">Deve</th></tr></thead>
+    <tbody>${saldos.map(({c,s}) => `<tr><td>${esc(c.nome)}</td><td>${esc(c.apelido)}</td><td>${esc(c.whats)}</td><td class="n">${s > 0 ? brl(s) : ''}</td><td class="n">${s < 0 ? brl(-s) : ''}</td></tr>`).join('')}</tbody></table>`,
+    `Relatorio credito Arena Prime ${hojeArquivo()}`);
+}
+
+/* ===== WhatsApp ===== */
+function whatsExtrato(){
+  const c = cli(ui.sel); if(!c) return;
+  const num = waNumero(c.whats);
+  if(!num){ toast(`Cadastre o WhatsApp de ${c.nome} pra mandar o extrato.`); formCliente(c.id); return; }
+  const s = saldo(c.id);
+  const nome = c.apelido || c.nome.split(' ')[0];
+  const ult = linhasExtrato(c.id).slice(0,6);
+  let msg = `Oi ${nome}! Segue seu extrato de crédito na Arena Prime.\n\n`;
+  msg += s > 0 ? `Crédito disponível: ${brl(s)}` : s < 0 ? `Valor em aberto: ${brl(-s)}` : 'Saldo zerado.';
+  if(s > 0 && !c.semValidade) creditoDetalhe(c.id).ativos.forEach(b => { msg += `\n${brl(b.valor)} de prêmio da liga vale até ${fmtData(b.vence)}`; });
+  if(ult.length) msg += '\n\nÚltimas movimentações:\n' + ult.map(l => `${dataCurta(l.data)}  ${l.tipo === 'beneficio' ? '' : (l.tipo === 'credito' ? '+ ' : l.tipo === 'debito' ? '- ' : '') + brl(l.total) + '  '}${l.desc}`).join('\n');
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+
+/* ===== backup ===== */
+function exportar(sufixo = ''){
+  const d = new Date();
+  const blob = new Blob([JSON.stringify({ app:'arenaprime-credito', versao:1, exportado:d.toISOString(), dados:{ clientes:S.clientes, produtos:S.produtos, lancs:S.lancs, planos:S.planos || [], ligas:S.ligas || [], ultimosPremios:S.ultimosPremios || [], config:S.config || {} } }, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `backup-credito-arena-prime-${d.toISOString().slice(0,10)}${sufixo}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  if(sufixo) return;
+  S.ultimoBackup = d.toISOString(); save(); render();
+  toast('Backup baixado. Guarde o arquivo no Google Drive ou no WhatsApp.');
+}
+$('#arqImport').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let d;
+    try{ const j = JSON.parse(r.result); d = j.dados || j; if(!Array.isArray(d.clientes) || !Array.isArray(d.lancs)) throw 0; }
+    catch(_){ toast('Esse arquivo não é um backup deste sistema.'); return; }
+    abrirDialogo({ titulo:'Restaurar backup', confirmar:'Substituir dados', perigo:true,
+      corpo:`<p>O arquivo tem ${d.clientes.length} clientes e ${d.lancs.length} lançamentos.</p><p>Os dados atuais deste navegador (${S.clientes.length} clientes e ${S.lancs.length} lançamentos) vão ser substituídos. Antes disso, uma cópia deles é baixada automaticamente.</p>`,
+      aoConfirmar(){
+        if(!S.exemplo && (S.clientes.length || S.lancs.length)) exportar('-antes-de-restaurar');
+        S = { ...vazio(), clientes:d.clientes, produtos:d.produtos || [], lancs:d.lancs, planos:d.planos || [], ligas:d.ligas || [], ultimosPremios:d.ultimosPremios || [], config:d.config || {}, ultimoBackup:new Date().toISOString() };
+        ui.sel = null; ui.carrinho = []; document.body.classList.remove('ficha-aberta');
+        save(); render(); toast('Backup restaurado.');
+      } });
+  };
+  r.readAsText(f);
+  e.target.value = '';
+});
+function apagarTudo(){
+  abrirDialogo({ titulo:'Apagar todos os dados', confirmar:'Apagar tudo', perigo:true,
+    corpo:`<p>Isso remove ${S.clientes.length} clientes, ${S.produtos.length} produtos e ${S.lancs.length} lançamentos deste navegador. ${S.exemplo ? '' : 'Uma cópia de segurança é baixada automaticamente antes.'}</p>
+      <div class="campo"><label for="confApagar">Digite APAGAR pra confirmar</label><input id="confApagar" autocomplete="off"></div>`,
+    aoConfirmar(){
+      if($('#confApagar').value.trim().toUpperCase() !== 'APAGAR') return 'Digite APAGAR no campo pra confirmar.';
+      if(!S.exemplo && (S.clientes.length || S.lancs.length)) exportar('-antes-de-apagar');
+      S = vazio(); ui.sel = null; ui.carrinho = []; ui.cat = ''; document.body.classList.remove('ficha-aberta');
+      save(); render(); toast('Todos os dados foram apagados.');
+    } });
+}
+function carregarExemplo(){
+  if(S.clientes.length || S.lancs.length) return;
+  const agora = Date.now(), dia = 864e5;
+  const P = (nome, preco, categoria, estoque = null) => ({ id:uid(), nome, preco, categoria, estoque });
+  S.produtos = [P('Booster One Piece',2500,'One Piece',24), P('Deck inicial One Piece',9000,'One Piece',3), P('Booster Pokémon',2500,'Pokémon',18), P('Sleeve',3000,'Acessórios',10), P('Inscrição da liga',1500,'Liga')];
+  S.exemplo = true;
+  const C = (nome, apelido, whats) => ({ id:uid(), nome, apelido, whats, criado:new Date(agora - 12*dia).toISOString() });
+  const [jo, ma, pe, an] = [C('João Exemplo','Jão','48 99999-0001'), C('Maria Exemplo','Mari',''), C('Pedro Exemplo','PH','48 99999-0003'), C('Ana Exemplo','','')];
+  S.clientes = [jo, ma, pe, an];
+  const L = (c, tipo, desc, total, dias) => ({ id:uid(), cid:c.id, tipo, total, itens:[], desc, data:new Date(agora - dias*dia).toISOString(), ...(tipo === 'debito' ? { compra:true } : {}) });
+  S.lancs = [
+    L(ma,'credito','Troca de cartas',4500,8),
+    { ...L(jo,'credito','Prêmio da liga',6000,6), premio:true, vence:addDias(hojeISO(), VALIDADE_PREMIO - 6) },
+    { ...L(ma,'credito','Prêmio da liga',4000,42), premio:true, vence:addDias(hojeISO(), VALIDADE_PREMIO - 42) },
+    L(jo,'debito','2× Booster One Piece',5000,5),
+    L(pe,'debito','Deck inicial One Piece',9000,4),
+    L(ma,'debito','Booster Pokémon',2500,3),
+    { ...L(pe,'credito','Pagamento (dinheiro)',5000,2), forma:'Dinheiro' },
+    L(jo,'debito','Inscrição da liga',1500,1),
+    ...Array.from({ length:10 }, (_, i) => ({ ...L(an,'venda','Inscrição da liga (pago no pix)',1500,70 - i*7), compra:true, forma:'Pix' })),
+  ];
+  const v1 = addDias(hojeISO(), -5);
+  S.planos = [{ id:uid(), cid:pe.id, total:4000, criado:new Date(agora - 2*dia).toISOString(), cancelado:false,
+    parcelas:[{ valor:2000, venc:v1, pagaLanc:null }, { valor:2000, venc:addMeses(v1,1), pagaLanc:null }] }];
+  save(); render();
+  toast('Dados de exemplo carregados.');
+}
+
+/* ===== eventos ===== */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if(!t) return;
+  const d = t.dataset;
+  if(d.view) return irPara(d.view);
+  if(d.id) return abrirCliente(d.id);
+  if(d.abrir) return abrirCliente(d.abrir);
+  if(d.fluxo) return iniciarFluxo(d.fluxo);
+  if(d.jog){ const L = ui.liga; if(L.sel[d.jog]) delete L.sel[d.jog]; else L.sel[d.jog] = L.padrao; $('#lgLista').innerHTML = lgListaHTML(); $('#lgFecha').innerHTML = lgFechaHTML(); $('#lgErro').textContent = ''; const b = document.querySelector(`[data-jog="${d.jog}"]`); if(b) b.focus(); return; }
+  if(d.jforma){ const [id, f] = d.jforma.split(':'); ui.liga.sel[id] = f; $('#lgLista').innerHTML = lgListaHTML(); const b = document.querySelector(`[data-jforma="${d.jforma}"]`); if(b) b.focus(); return; }
+  if(d.lpadrao){ const L = ui.liga; L.padrao = d.lpadrao; Object.keys(L.sel).forEach(id => { if(['Dinheiro','Pix','Cartão'].includes(L.sel[id])) L.sel[id] = d.lpadrao; }); renderLiga(); return; }
+  if(d.cmodo){ ui.pc = { modo:d.cmodo }; atualizarLancar(); const b = document.querySelector(`[data-cmodo="${d.cmodo}"]`); if(b) b.focus(); return; }
+  if(d.cforma){ ui.pc = { modo:ui.pc.modo, forma:d.cforma }; atualizarLancar(); const f = document.querySelector('[data-acao="confirmar-compra"]'); if(f) f.scrollIntoView({ block:'nearest' }); return; }
+  if(d.cresto){ ui.pc = { modo:ui.pc.modo, resto:d.cresto }; atualizarLancar(); const f = document.querySelector('[data-acao="confirmar-compra"]'); if(f) f.scrollIntoView({ block:'nearest' }); return; }
+  if(d.cparc){ ui.pc.parc = d.cparc; return atualizarLancar(); }
+  if(d.pforma){ ui.forma = d.pforma; $('#pgErro').textContent = ''; document.querySelectorAll('[data-pforma]').forEach(x => x.setAttribute('aria-pressed', x === t)); atualizarCartaoPg(); return; }
+  if(d.pagto){ ui.pagto = d.pagto; renderFluxo(cli(ui.sel)); if(d.pagto === 'outro'){ const i = $('#pgValor'); if(i) i.focus(); } else { const b = document.querySelector(`[data-pagto="${d.pagto}"]`); if(b) b.focus(); } return; }
+  if(d.motivo){ $('#crMotivo').value = d.motivo; ui.crPremio = d.motivo === 'Prêmio da liga'; mostrarValidade(); document.querySelectorAll('[data-motivo]').forEach(x => x.setAttribute('aria-pressed', x === t)); $('#crValor').focus(); return; }
+  if(d.menu){
+    dlg.close();
+    const pl = planoAtivo(ui.sel);
+    switch(d.menu){
+      case 'dar-credito': return iniciarFluxo('credito');
+      case 'adiantou': return iniciarFluxo('pagou');
+      case 'parcelar': return formPlano();
+      case 'whats': return whatsExtrato();
+      case 'pdf-extrato': return pdfExtrato();
+      case 'editar': return formCliente(ui.sel);
+      case 'cancelar-plano': return pl && cancelarPlano(pl.id);
+      case 'remover-cliente': return removerCliente();
+    }
+    return;
+  }
+  if(d.cat !== undefined){ ui.cat = d.cat; S.ultimaCat = d.cat; save(); return atualizarLancar(); }
+  if(d.produto) return addProdutoCarrinho(d.produto);
+  if(d.qtd){ const [k, dx] = d.qtd.split(':').map(Number); const it = ui.carrinho[k]; if(!it) return; if(dx > 0 && it.pid){ const p = S.produtos.find(x => x.id === it.pid); if(p && !cabeNoEstoque(p, it.qtd + 1)) return; } it.qtd += dx; if(it.qtd < 1) ui.carrinho.splice(k,1); return atualizarLancar(); }
+  if(d.tirar !== undefined){ ui.carrinho.splice(Number(d.tirar),1); return atualizarLancar(); }
+  if(d.cobrar) return cobrarParcela(d.cobrar);
+  if(d.avisarPremio) return avisarPremio(d.avisarPremio);
+  if(d.cancelarPlano) return cancelarPlano(d.cancelarPlano);
+  if(d.estornar) return estornar(d.estornar);
+  if(d.estoque){ const [id, dx] = d.estoque.split(':'); const p = S.produtos.find(x => x.id === id); if(!p) return; p.estoque = Math.max(0, p.estoque + Number(dx)); save(); return renderProdutos(); }
+  if(d.editarProd) return formProduto(d.editarProd);
+  if(d.removerProd) return removerProduto(d.removerProd);
+  switch(d.acao){
+    case 'novo-cliente': return formCliente(null);
+    case 'editar': return formCliente(ui.sel);
+    case 'remover-cliente': return removerCliente();
+    case 'voltar': ui.sel = null; ui.carrinho = []; ui.fluxo = null; document.body.classList.remove('ficha-aberta'); render(); return;
+    case 'add-avulso': return addAvulso();
+    case 'mais': return menuMais();
+    case 'novo-jogador': return formCliente(null, { naLiga:true });
+    case 'confirmar-liga': return confirmarLiga();
+    case 'dar-premios': return darPremios();
+    case 'mais-premios': ui.liga.maisPremios = true; ui.liga.premios = [{ cid:'', valor:'' }]; renderLiga(); { const x = $('#pr0'); if(x) x.focus(); } return;
+    case 'add-premio': ui.liga.premios.push({ cid:'', valor:'' }); renderLiga(); { const x = $('#pr' + (ui.liga.premios.length - 1)); if(x) x.focus(); } return;
+    case 'dar-beneficio': return darBeneficio();
+    case 'novo-produto': return formProduto(null);
+    case 'sair-fluxo': return sairFluxo();
+    case 'confirmar-compra': return confirmarCompra();
+    case 'confirmar-pagamento': return confirmarPagamento();
+    case 'confirmar-credito': return confirmarCredito();
+    case 'parcelar': return formPlano();
+    case 'whats': return whatsExtrato();
+    case 'pdf-extrato': return pdfExtrato();
+    case 'pdf-relatorio': return pdfRelatorio();
+    case 'exportar': return exportar();
+    case 'importar': return $('#arqImport').click();
+    case 'apagar-tudo': return apagarTudo();
+    case 'exemplo': return carregarExemplo();
+  }
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && (e.target.id === 'avValor' || e.target.id === 'avMotivo')){ e.preventDefault(); addAvulso(); }
+  if(e.key === 'Enter' && e.target.id === 'pgValor'){ e.preventDefault(); confirmarPagamento(); }
+  if(e.key === 'Enter' && (e.target.id === 'crValor' || e.target.id === 'crMotivo')){ e.preventDefault(); confirmarCredito(); }
+  if(e.key === 'Escape' && ui.fluxo && !dlg.open){ e.preventDefault(); sairFluxo(); }
+  if(e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !dlg.open){ e.preventDefault(); if(ui.view !== 'clientes') irPara('clientes'); $('#busca').focus(); }
+});
+$('#busca').addEventListener('input', e => { ui.busca = e.target.value; renderLista(); });
+document.addEventListener('input', e => {
+  const t = e.target;
+  if(t.id === 'lgBusca'){ ui.liga.busca = t.value; $('#lgLista').innerHTML = lgListaHTML(); }
+  if(t.id === 'lgValor'){ ui.liga.valor = t.value; $('#lgFecha').innerHTML = lgFechaHTML(); $('#lgErro').textContent = ''; $('#lgDivisao').textContent = divisaoTxt(); }
+  if(t.id === 'lgLoja'){ const v = String(t.value).trim() === '' ? 0 : parseValor(t.value); if(v !== null){ S.config = { ...(S.config || {}), parteLoja: v }; save(); } $('#lgDivisao').textContent = v === null ? 'Valor da loja inválido.' : divisaoTxt(); $('#lgErro').textContent = ''; }
+  if(t.dataset && t.dataset.prval !== undefined){ ui.liga.premios[Number(t.dataset.prval)].valor = t.value; $('#prErro').textContent = ''; const ps = $('#prSoma'); if(ps) ps.innerHTML = somaPremiosHTML(); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if(t.dataset && t.dataset.prsel !== undefined){ ui.liga.premios[Number(t.dataset.prsel)].cid = t.value; $('#prErro').textContent = ''; const ps = $('#prSoma'); if(ps) ps.innerHTML = somaPremiosHTML(); }
+  if(t.id === 'lgValor') $('#lgLista').innerHTML = lgListaHTML();   // atualiza se "Crédito" aparece pra cada um
+});
+document.addEventListener('input', e => {
+  if(e.target.id === 'pgValor'){ $('#pgErro').textContent = ''; atualizarPagto(); }
+  if(e.target.id === 'cVezes' || e.target.id === 'cCobrado'){
+    ui.pc[e.target.id === 'cVezes' ? 'vezes' : 'cobrado'] = e.target.value;
+    const { total, resto, pc } = contaCompra(); const base = pc.modo === 'hora' ? total : resto;
+    $('#cInfo').textContent = cartaoInfo(ui.pc, base); const er = $('#cErro'); if(er) er.textContent = '';
+  }
+  if(e.target.id === 'pVezes' || e.target.id === 'pCobrado'){
+    ui.pcart[e.target.id === 'pVezes' ? 'vezes' : 'cobrado'] = e.target.value;
+    if(e.target.id === 'pCobrado') ui.pcart.editado = true;
+    $('#pInfo').textContent = cartaoInfo(ui.pcart, valorPagto()); $('#pgErro').textContent = '';
+  }
+  if(e.target.id === 'crValor' || e.target.id === 'crMotivo'){ $('#crErro').textContent = ''; atualizarCredito(); }
+});
+$('#busca').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ const b = document.querySelector('#listaClientes .linha-cli'); if(b) abrirCliente(b.dataset.id); }
+});
+
+window.addEventListener('storage', e => {
+  if(e.key !== KEY) return;
+  S = load(); ui.carrinho = []; ui.fluxo = null;
+  if(ui.sel && !cli(ui.sel)){ ui.sel = null; document.body.classList.remove('ficha-aberta'); }
+  if(dlg.open) dlg.close();
+  render(); toast('Os dados foram alterados em outra aba e esta tela foi atualizada.');
+});
+
+render();
+})();
+</script>
+</body>
+</html>
